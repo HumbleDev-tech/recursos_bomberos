@@ -54,11 +54,15 @@ export const getPersonalbyID = async (req, res) => {
         }
 
         const query = `
-            SELECT id, rut, nombre, apellido, 
-                   DATE_FORMAT(fec_nac, '%d-%m-%Y') AS fec_nac, 
-                   img_url, obs, isDeleted, rol_personal_id, compania_id
-            FROM personal 
-            WHERE id = ? AND isDeleted = 0
+            SELECT p.id, p.rut, p.nombre AS nombre, p.apellido, 
+                   DATE_FORMAT(p.fec_nac, '%d-%m-%Y') AS fec_nac, 
+                   p.img_url, p.obs, p.isDeleted,
+                   rp.nombre AS rol_personal, 
+                   c.nombre AS compania
+            FROM personal p
+            INNER JOIN rol_personal rp ON p.rol_personal_id = rp.id
+            INNER JOIN compania c ON p.compania_id = c.id
+            WHERE p.id = ? AND p.isDeleted = 0
         `;
         
         const [rows] = await pool.query(query, [idNumber]);
