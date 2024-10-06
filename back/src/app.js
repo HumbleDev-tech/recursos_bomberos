@@ -1,5 +1,6 @@
 import express from "express";
 import morgan from "morgan";
+import cors from "cors";
 // TODO: import desde routes
 import indexRoutes from './routes/index.routes.js';
 
@@ -25,6 +26,7 @@ import carga_combustibleRoutes from './routes/carga_combustible.routes.js';
 const app = express();
 app.use(express.json());
 app.use(morgan('dev'));
+app.use(cors());
 
 const base_route = "/api/";
 
