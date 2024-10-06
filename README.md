@@ -56,3 +56,17 @@ sudo nano recursos_bomberos/back/.env.example
 cd recursos_bomberos/back/src/
 npm run dev
 ```
+
+----------------------------------
+
+Matar procesos de node
+
+1. Listar procesos
+```
+ps aux | grep node
+```
+
+2. Cerrar procesos de node
+```
+pkill node
+```
