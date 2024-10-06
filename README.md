@@ -7,7 +7,7 @@ Guia para usar o testear la API:
 6. Ejecutar la API  usando el siguiente comando en consola (dentro de la carpeta "back"): npm run dev
 7. Para probar si la API se conectó correctamente con la base de datos y todo está funcionando correctamente, ir a la siguiente dirección: http://localhost:3000/ping
 
-
+----------------------------------
 
 Guia de uso de la API en una instancia EC2:
 1. Conectar via SSH:
