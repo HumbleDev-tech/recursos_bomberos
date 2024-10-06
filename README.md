@@ -48,7 +48,7 @@ cd
 
 7. Modificar la configuración del archivo dotenv
 ```
-sudo nano recursos_bomberos/back/.env
+sudo nano recursos_bomberos/back/.env.example
 ```
 
 8. Iniciar la API
