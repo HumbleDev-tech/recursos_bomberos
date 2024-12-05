@@ -76,7 +76,7 @@ export const getRolPersonal = async(req, res)=>{
 }
 
 export const createRolPersonal = async (req, res) => {
-    const { nombre, descripcion } = req.body;
+    let { nombre, descripcion } = req.body;
     let errors = [];
 
     try {
@@ -153,7 +153,7 @@ export const deleteRolPersonal = async(req, res) =>{
 
 export const updateRolPersonal = async (req, res) => {
     const { id } = req.params;
-    const { nombre, descripcion, isDeleted } = req.body;
+    let { nombre, descripcion, isDeleted } = req.body;
     let errors = [];
 
     try {
