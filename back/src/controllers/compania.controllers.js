@@ -72,28 +72,44 @@ export const getCompania = async(req, res)=>{
     }
 }
 
-export const createCompania = async(req, res) =>{
-    const {nombre}= req.body
-    try{
-        // validacion de datos
+export const createCompania = async (req, res) => {
+    const { nombre } = req.body;
+    const errors = []; // Arreglo para capturar errores
+
+    try {
+        // Validación de datos
         if (typeof nombre !== "string") {
-          return res.status(400).json({
-            message: "Tipo de datos inválido",
-          });
+            errors.push("Tipo de datos inválido para 'nombre'");
         }
-        // activo por defecto
-        const [rows] = await pool.query('INSERT INTO compania (nombre, isDeleted) VALUES (?, 0)', [nombre])
-        res.send({
+
+        // Validar la longitud del nombre
+        if (nombre && nombre.length > 50) {
+            errors.push("El nombre de la compañía es demasiado largo");
+        }
+
+        // Validar que no exista una compañía con el mismo nombre
+        const [companias] = await pool.query('SELECT * FROM compania WHERE nombre = ?', [nombre]);
+        if (companias.length > 0) {
+            errors.push("Ya existe una compañía con el mismo nombre");
+        }
+
+        // Si hay errores, devolverlos
+        if (errors.length > 0) {
+            return res.status(400).json({ errors });
+        }
+
+        // Insertar la compañía (activo por defecto)
+        const [rows] = await pool.query('INSERT INTO compania (nombre, isDeleted) VALUES (?, 0)', [nombre]);
+
+        res.status(201).json({
             id: rows.insertId,
             nombre
         });
-    } catch (error){
-        return res.status(500).json({
-            message: "Error interno del servidor",
-            error: error.message
-        })
+    } catch (error) {
+        errors.push(error.message);
+        return res.status(500).json({ message: "Error interno del servidor", errors });
     }
-}
+};
 
 // eliminar compañia por id
 export const deleteCompania = async(req, res) =>{
@@ -124,33 +140,45 @@ export const deleteCompania = async(req, res) =>{
 export const updateCompania = async (req, res) => {
     const { id } = req.params;
     const { nombre, isDeleted } = req.body;
+    const errors = []; // Arreglo para capturar errores
 
     try {
         const idNumber = parseInt(id);
         if (isNaN(idNumber)) {
-            return res.status(400).json({
-                message: "ID inválido"
-            });
+            errors.push("ID inválido");
         }
 
         // Validaciones
         const updates = {};
         if (nombre !== undefined) {
             if (typeof nombre !== "string") {
-                return res.status(400).json({
-                    message: "Tipo de dato inválido para 'nombre'"
-                });
+                errors.push("Tipo de dato inválido para 'nombre'");
             }
+
+            // Validar la longitud del nombre
+            if (nombre.length > 50) {
+                errors.push("El nombre de la compañía es demasiado largo");
+            }
+
+            // Validar que no exista una compañía con el mismo nombre
+            const [companias] = await pool.query('SELECT * FROM compania WHERE nombre = ? AND id != ?', [nombre, idNumber]);
+            if (companias.length > 0) {
+                errors.push("Ya existe una compañía con el mismo nombre");
+            }
+
             updates.nombre = nombre;
         }
 
         if (isDeleted !== undefined) {
             if (typeof isDeleted !== "number" || (isDeleted !== 0 && isDeleted !== 1)) {
-                return res.status(400).json({
-                    message: "Tipo de dato inválido para 'isDeleted'"
-                });
+                errors.push("Tipo de dato inválido para 'isDeleted'");
             }
             updates.isDeleted = isDeleted;
+        }
+
+        // Si se encontraron errores, devolverlos
+        if (errors.length > 0) {
+            return res.status(400).json({ errors });
         }
 
         // Construir la consulta de actualización
@@ -176,9 +204,10 @@ export const updateCompania = async (req, res) => {
         const [rows] = await pool.query('SELECT * FROM compania WHERE id = ?', [idNumber]);
         res.json(rows[0]);
     } catch (error) {
+        errors.push(error.message);
         return res.status(500).json({
             message: "Error interno del servidor",
-            error: error.message,
+            errors
         });
     }
 };

@@ -213,10 +213,12 @@ export const createCargaCombustible = async (req, res) => {
 
 export const createCargaCombustibleBitacora = async (req, res) => {
     const { bitacora, litros, valor_mon } = req.body;
+    const errors = [];
 
     // Validar que los datos principales estén presentes
     if (!bitacora || typeof litros !== 'number' || typeof valor_mon !== 'number') {
-        return res.status(400).json({ message: 'Datos incompletos o inválidos' });
+        errors.push('Datos incompletos o inválidos');
+        return res.status(400).json({ message: 'Datos incompletos o inválidos', errors });
     }
 
     // Extraer y validar los datos de la bitácora
@@ -264,7 +266,7 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             isNaN(claveIdNumber) ||
             typeof direccion !== 'string'
         ) {
-            return res.status(400).json({ message: 'Tipo de datos inválido en bitácora' });
+            errors.push('Tipo de datos inválido en bitácora');
         }
 
         // Validación de fecha y hora si están presentes
@@ -272,15 +274,11 @@ export const createCargaCombustibleBitacora = async (req, res) => {
         const horaRegex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
 
         if (f_salida && h_salida && (!fechaRegex.test(f_salida) || !horaRegex.test(h_salida))) {
-            return res.status(400).json({
-                message: 'El formato de la fecha o la hora de salida es inválido. Deben ser dd-mm-aaaa y HH:mm'
-            });
+            errors.push('El formato de la fecha o la hora de salida es inválido. Deben ser dd-mm-aaaa y HH:mm');
         }
 
         if (f_llegada && h_llegada && (!fechaRegex.test(f_llegada) || !horaRegex.test(h_llegada))) {
-            return res.status(400).json({
-                message: 'El formato de la fecha o la hora de llegada es inválido. Deben ser dd-mm-aaaa y HH:mm'
-            });
+            errors.push('El formato de la fecha o la hora de llegada es inválido. Deben ser dd-mm-aaaa y HH:mm');
         }
 
         // Validar la existencia de las llaves foráneas
@@ -289,7 +287,7 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             [companiaIdNumber]
         );
         if (companiaExists.length === 0) {
-            return res.status(400).json({ message: "Compañía no existe o está eliminada" });
+            errors.push("Compañía no existe o está eliminada");
         }
 
         const [conductorExists] = await pool.query(
@@ -297,7 +295,7 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             [conductorIdNumber]
         );
         if (conductorExists.length === 0) {
-            return res.status(400).json({ message: "Conductor no existe o está eliminado" });
+            errors.push("Conductor no existe o está eliminado");
         }
 
         const [maquinaExists] = await pool.query(
@@ -305,7 +303,7 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             [maquinaIdNumber]
         );
         if (maquinaExists.length === 0) {
-            return res.status(400).json({ message: "Máquina no existe o está eliminada" });
+            errors.push("Máquina no existe o está eliminada");
         }
 
         const [claveExists] = await pool.query(
@@ -313,7 +311,7 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             [claveIdNumber]
         );
         if (claveExists.length === 0) {
-            return res.status(400).json({ message: "Clave no existe o está eliminada" });
+            errors.push("Clave no existe o está eliminada");
         }
 
         // Validación de valores numéricos para los kilómetros y otros campos
@@ -333,11 +331,22 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             isNaN(hbombaSalida) || hbombaSalida < 0 ||
             isNaN(hbombaLlegada) || hbombaLlegada < 0
         ) {
-            return res.status(400).json({ message: "Los valores de kilómetros, horas metro o bomba no pueden ser negativos" });
+            errors.push("Los valores de kilómetros, horas metro o bomba no pueden ser negativos");
         }
 
-        // Preparar el valor de obs (permitir nulo si no se proporciona)
-        const obsValue = obs || null;
+        // Validación de litros y valor monetario
+        if (litros <= 0) {
+            errors.push("Ingrese valor válido para 'litros'");
+        }
+
+        if (valor_mon <= 0) {
+            errors.push("Ingrese valor válido para 'valor_mon'");
+        }
+
+        // Si hay errores, no ejecutar las queries
+        if (errors.length > 0) {
+            return res.status(400).json({ errors });
+        }
 
         // Crear una nueva bitácora
         const [bitacoraResult] = await pool.query(
@@ -349,18 +358,12 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             [
                 companiaIdNumber, conductorIdNumber, maquinaIdNumber, direccion,
                 fh_salida, fh_llegada, claveIdNumber,
-                km_salida, km_llegada, hmetro_salida, hmetro_llegada,
-                hbomba_salida, hbomba_llegada, obsValue
+                kmSalida, kmLlegada, hmetroSalida, hmetroLlegada,
+                hbombaSalida, hbombaLlegada, obs || null
             ]
         );
 
         const bitacoraId = bitacoraResult.insertId;
-
-
-        // validacion litros
-        if(litros <= 0 || valor_mon <= 0){
-            return res.status(400).json({ message: "Ingrese valores validos para 'litros' o 'valor_mon'"})
-        }
 
         // Crear la carga de combustible
         const [cargaResult] = await pool.query(
@@ -375,8 +378,9 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             valor_mon
         });
     } catch (error) {
+        errors.push(error.message);
         console.error(error);
-        return res.status(500).json({ message: 'Error en la creación de la carga de combustible', error: error.message });
+        return res.status(500).json({ errors });
     }
 };
 
@@ -406,6 +410,8 @@ export const updateCargaCombustible = async (req, res) => {
     const { id } = req.params;
     const { bitacora_id, litros, valor_mon } = req.body;
 
+    const errors = []; // Arreglo para capturar errores
+
     try {
         const idNumber = parseInt(id);
         const bitacoraIdNumber = parseInt(bitacora_id);
@@ -414,39 +420,43 @@ export const updateCargaCombustible = async (req, res) => {
         if (bitacora_id !== undefined) {
             const [bitacoraExists] = await pool.query("SELECT 1 FROM bitacora WHERE id = ? AND isDeleted = 0", [bitacoraIdNumber]);
             if (bitacoraExists.length === 0) {
-                return res.status(400).json({ message: 'Bitácora no existe o está eliminada' });
+                errors.push('Bitácora no existe o está eliminada');
             }
         }
 
         if (isNaN(bitacoraIdNumber) && bitacora_id !== undefined) {
-            return res.status(400).json({ message: 'Tipo de datos inválido para bitácora' });
+            errors.push('Tipo de datos inválido para bitácora');
         }
 
         // Validar litros y valor_mon
         if (litros !== undefined && typeof litros !== 'number') {
-            return res.status(400).json({ message: 'Tipo de datos inválido para litros' });
+            errors.push('Tipo de datos inválido para litros');
         }
         if (valor_mon !== undefined && typeof valor_mon !== 'number') {
-            return res.status(400).json({ message: 'Tipo de datos inválido para valor_mon' });
+            errors.push('Tipo de datos inválido para valor_mon');
         }
 
-        const [result] = await pool.query('UPDATE carga_combustible SET ' +
-            'bitacora_id = IFNULL(?, bitacora_id), ' +
-            'litros = IFNULL(?, litros), ' +
-            'valor_mon = IFNULL(?, valor_mon) ' +
-            'WHERE id = ?', [
-                bitacoraIdNumber,
-                litros,
-                valor_mon,
-                idNumber
-            ]);
+        if (errors.length > 0) {
+            return res.status(400).json({ errors });
+        }
+
+        const [result] = await pool.query(
+            `UPDATE carga_combustible SET 
+                bitacora_id = IFNULL(?, bitacora_id), 
+                litros = IFNULL(?, litros), 
+                valor_mon = IFNULL(?, valor_mon) 
+            WHERE id = ?`,
+            [bitacoraIdNumber, litros, valor_mon, idNumber]
+        );
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Carga de combustible no encontrada' });
+            errors.push('Carga de combustible no encontrada');
+            return res.status(404).json({ message: 'Errores de validación', errors });
         }
 
         const [rows] = await pool.query('SELECT * FROM carga_combustible WHERE id = ?', [idNumber]);
         const row = rows[0];
+
         const bitacoraQuery = `
             SELECT id, compania_id, conductor_id, direccion, 
                    DATE_FORMAT(fh_salida, '%d-%m-%Y %H:%i') as h_salida,
@@ -462,7 +472,8 @@ export const updateCargaCombustible = async (req, res) => {
             img_url: row.img_url,
         });
     } catch (error) {
-        return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+        errors.push(error.message);
+        return res.status(500).json({ message: 'Error interno del servidor', errors });
     }
 };
 

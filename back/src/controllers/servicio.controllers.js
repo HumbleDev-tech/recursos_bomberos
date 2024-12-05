@@ -95,19 +95,33 @@ export const getServicio = async (req, res) => {
 // Crear un nuevo servicio
 export const createServicio = async (req, res) => {
     const { subdivision_id, descripcion } = req.body;
+    let errors = [];
 
     try {
         // Validar existencia de la subdivision
         const [subdivisionExists] = await pool.query("SELECT 1 FROM subdivision WHERE id = ? AND isDeleted = 0", [subdivision_id]);
         if (subdivisionExists.length === 0) {
-            return res.status(400).json({
-                message: "Subdivision no existe o está eliminada"
-            });
+            errors.push("Subdivision no existe o está eliminada");
         }
 
         if (typeof descripcion !== "string") {
+            errors.push("Tipo de datos inválido para 'descripcion'");
+        }
+
+        // Validar largo de 'descripcion'
+        if (descripcion.trim().length === 0) {
+            errors.push("La descripción no puede estar vacía");
+        }
+
+        if (descripcion.length > 100) {
+            errors.push("La descripción no puede tener más de 100 caracteres");
+        }
+
+        // Si hay errores, devolverlos
+        if (errors.length > 0) {
             return res.status(400).json({
-                message: "Tipo de datos inválido para 'descripcion'"
+                message: "Errores de validación",
+                errors
             });
         }
 
@@ -118,12 +132,10 @@ export const createServicio = async (req, res) => {
             descripcion
         });
     } catch (error) {
-        return res.status(500).json({
-            message: "Error interno del servidor",
-            error: error.message
-        });
+        return res.status(500).json({ message: "Error interno del servidor", error: error.message });
     }
 };
+
 
 // Eliminar un servicio (marcar como eliminado)
 export const deleteServicio = async (req, res) => {
@@ -157,14 +169,13 @@ export const deleteServicio = async (req, res) => {
 export const updateServicio = async (req, res) => {
     const { id } = req.params;
     const { subdivision_id, descripcion, isDeleted } = req.body;
+    let errors = [];
 
     try {
         const idNumber = parseInt(id);
 
         if (isNaN(idNumber)) {
-            return res.status(400).json({
-                message: "Tipo de datos inválido para 'id'"
-            });
+            errors.push("Tipo de datos inválido para 'id'");
         }
 
         const updates = {};
@@ -173,9 +184,7 @@ export const updateServicio = async (req, res) => {
         if (subdivision_id !== undefined) {
             const [subdivisionExists] = await pool.query("SELECT 1 FROM subdivision WHERE id = ? AND isDeleted = 0", [subdivision_id]);
             if (subdivisionExists.length === 0) {
-                return res.status(400).json({
-                    message: "Subdivision no existe o está eliminada"
-                });
+                errors.push("Subdivision no existe o está eliminada");
             }
             updates.subdivision_id = subdivision_id;
         }
@@ -183,9 +192,16 @@ export const updateServicio = async (req, res) => {
         // Validar y agregar descripcion
         if (descripcion !== undefined) {
             if (typeof descripcion !== "string") {
-                return res.status(400).json({
-                    message: "Tipo de datos inválido para 'descripcion'"
-                });
+                errors.push("Tipo de datos inválido para 'descripcion'");
+            }
+
+            // Validar longitud de descripcion
+            if (descripcion.trim().length === 0) {
+                errors.push("La descripción no puede estar vacía");
+            }
+
+            if (descripcion.length > 100) {
+                errors.push("La descripción no puede tener más de 100 caracteres");
             }
             updates.descripcion = descripcion;
         }
@@ -193,11 +209,14 @@ export const updateServicio = async (req, res) => {
         // Validar y agregar isDeleted
         if (isDeleted !== undefined) {
             if (typeof isDeleted !== "number" || (isDeleted !== 0 && isDeleted !== 1)) {
-                return res.status(400).json({
-                    message: "Tipo de datos inválido para 'isDeleted'"
-                });
+                errors.push("Tipo de datos inválido para 'isDeleted'");
             }
             updates.isDeleted = isDeleted;
+        }
+
+        // Si hay errores, devolverlos
+        if (errors.length > 0) {
+            return res.status(400).json({ errors });
         }
 
         const setClause = Object.keys(updates)
@@ -222,9 +241,6 @@ export const updateServicio = async (req, res) => {
         const [rows] = await pool.query('SELECT * FROM servicio WHERE id = ?', [idNumber]);
         res.json(rows[0]);
     } catch (error) {
-        return res.status(500).json({
-            message: "Error interno del servidor",
-            error: error.message
-        });
+        return res.status(500).json({ message: "Error interno del servidor", error: error.message });
     }
 };

@@ -80,13 +80,40 @@ export const getTallerById = async (req, res) => {
 // Crear nuevo taller
 export const createTaller = async (req, res) => {
   const { nombre, fono } = req.body;
+  let errors = [];
 
   try {
     // Validaciones
     if (typeof nombre !== 'string' || typeof fono !== 'string') {
-      return res.status(400).json({
-        message: 'Tipo de datos inválido',
-      });
+      errors.push('Tipo de datos inválido para "nombre" o "fono"');
+    }
+
+    // Validar longitud de nombre
+    if (nombre.trim().length === 0) {
+      errors.push('El campo "nombre" no puede estar vacío');
+    }
+
+    if (fono.trim().length === 0) {
+      errors.push('El campo "fono" no puede estar vacío');
+    }
+
+    if(fono.trim().length > 15){
+      errors.push('El campo "fono" no puede tener más de 15 caracteres');
+    }
+
+    if(nombre.trim().length > 50){
+      errors.push('El campo "nombre" no puede tener más de 50 caracteres');
+    }
+
+    // Validar que no exista un taller con el mismo nombre
+    const [talleres] = await pool.query("SELECT 1 FROM taller WHERE nombre = ? AND isDeleted = 0", [nombre]);
+    if (talleres.length > 0) {
+      errors.push('Ya existe un taller con el mismo nombre');
+    }
+
+    // Si hay errores de validación, devolverlos
+    if (errors.length > 0) {
+      return res.status(400).json({ errors });
     }
 
     // Inserción en la base de datos
@@ -102,10 +129,7 @@ export const createTaller = async (req, res) => {
     });
   } catch (error) {
     console.error('error: ', error);
-    return res.status(500).json({
-      message: "Error interno del servidor",
-      error: error.message
-  });
+    return res.status(500).json({ message: "Error interno del servidor", error: error.message });
   }
 };
 
@@ -134,42 +158,72 @@ export const deleteTaller = async (req, res) => {
 export const updateTaller = async (req, res) => {
   const { id } = req.params;
   const { nombre, fono, isDeleted } = req.body;
+  let errors = [];
 
   try {
     const idNumber = parseInt(id);
     if (isNaN(idNumber)) {
-      return res.status(400).json({
-        message: "ID inválido"
-      });
+      errors.push("ID inválido");
     }
 
     // Validaciones
     const updates = {};
+
     if (nombre !== undefined) {
       if (typeof nombre !== "string") {
-        return res.status(400).json({
-          message: "Tipo de dato inválido para 'nombre'"
-        });
+        errors.push("Tipo de dato inválido para 'nombre'");
       }
-      updates.nombre = nombre;
+
+      if (nombre.trim().length === 0) {
+        errors.push('El campo "nombre" no puede estar vacío');
+      }
+
+      if (nombre.trim().length > 50) {
+        errors.push('El campo "nombre" no puede tener más de 50 caracteres');
+      }
+
+      // Validar si ya existe el taller
+      const [tallerExists] = await pool.query("SELECT * FROM taller WHERE nombre = ? AND id != ?", [nombre, idNumber]);
+      if (tallerExists.length > 0) {
+        errors.push('Ya existe un taller con ese nombre');
+      }
+
+      if (errors.length === 0) {
+        updates.nombre = nombre;
+      }
     }
 
     if (fono !== undefined) {
       if (typeof fono !== "string") {
-        return res.status(400).json({
-          message: "Tipo de dato inválido para 'fono'"
-        });
+        errors.push("Tipo de dato inválido para 'fono'");
       }
-      updates.fono = fono;
+
+      if (fono.trim().length === 0) {
+        errors.push('El campo "fono" no puede estar vacío');
+      }
+
+      if (fono.trim().length > 15) {
+        errors.push('El campo "fono" no puede tener más de 15 caracteres');
+      }
+
+      if (errors.length === 0) {
+        updates.fono = fono;
+      }
     }
 
     if (isDeleted !== undefined) {
       if (typeof isDeleted !== "number" || (isDeleted !== 0 && isDeleted !== 1)) {
-        return res.status(400).json({
-          message: "Tipo de dato inválido para 'isDeleted'"
-        });
+        errors.push("Tipo de dato inválido para 'isDeleted'");
       }
-      updates.isDeleted = isDeleted;
+
+      if (errors.length === 0) {
+        updates.isDeleted = isDeleted;
+      }
+    }
+
+    // Si hay errores, devolverlos
+    if (errors.length > 0) {
+      return res.status(400).json({ errors });
     }
 
     // Construir la consulta de actualización
@@ -202,6 +256,6 @@ export const updateTaller = async (req, res) => {
     return res.status(500).json({
       message: "Error interno del servidor",
       error: error.message
-  });
+    });
   }
 };

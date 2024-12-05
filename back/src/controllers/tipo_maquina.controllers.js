@@ -76,26 +76,46 @@ export const getTipoMaquinaById = async (req, res) => {
 // Crear tipo de máquina
 export const createTipoMaquina = async (req, res) => {
     const { clasificacion } = req.body;
+    let errors = [];
 
     try {
+        // Validación de datos
         if (typeof clasificacion !== 'string') {
-            return res.status(400).json({
-                message: 'Tipo de datos inválido'
-            });
+            errors.push('Tipo de datos inválido para "clasificacion"');
         }
 
+        // Validar largo de clasificacion
+        if (clasificacion.length > 50) {
+            errors.push('La clasificación debe tener un largo máximo de 50 caracteres');
+        }
+
+        // Validar si existe tipo de máquina con la misma clasificación
+        const [tipoMaquinaExists] = await pool.query("SELECT * FROM tipo_maquina WHERE clasificacion = ? AND isDeleted = 0", [clasificacion]);
+        if (tipoMaquinaExists.length > 0) {
+            errors.push('Ya existe un tipo de máquina con esa clasificación');
+        }
+
+        // Si hay errores, devolverlos
+        if (errors.length > 0) {
+            return res.status(400).json({ errors });
+        }
+
+        // Crear el tipo de máquina
         const [rows] = await pool.query("INSERT INTO tipo_maquina (clasificacion, isDeleted) VALUES (?, 0)", [clasificacion]);
         res.status(201).json({
             id: rows.insertId,
             clasificacion
         });
+
     } catch (error) {
+        console.error('error: ', error);
         return res.status(500).json({
             message: "Error interno del servidor",
             error: error.message
         });
     }
 };
+
 
 // Dar de baja tipo de máquina
 export const deleteTipoMaquina = async (req, res) => {
@@ -129,33 +149,45 @@ export const deleteTipoMaquina = async (req, res) => {
 export const updateTipoMaquina = async (req, res) => {
     const { id } = req.params;
     const { clasificacion, isDeleted } = req.body;
+    let errors = [];
 
     try {
         const idNumber = parseInt(id);
         if (isNaN(idNumber)) {
-            return res.status(400).json({
-                message: "ID inválido"
-            });
+            errors.push("ID inválido");
         }
 
         // Validaciones
         const updates = {};
         if (clasificacion !== undefined) {
             if (typeof clasificacion !== 'string') {
-                return res.status(400).json({
-                    message: 'Tipo de dato inválido para "clasificacion"'
-                });
+                errors.push('Tipo de dato inválido para "clasificacion"');
             }
+
+            // Validar largo de clasificacion
+            if (clasificacion.length > 50) {
+                errors.push('La clasificación debe tener un largo máximo de 50 caracteres');
+            }
+
+            // Validar si existe tipo de maquina con la misma clasificacion
+            const [tipoMaquinaExists] = await pool.query("SELECT * FROM tipo_maquina WHERE clasificacion = ? AND id != ?", [clasificacion, idNumber]);
+            if (tipoMaquinaExists.length > 0) {
+                errors.push('Ya existe un tipo de máquina con esa clasificación');
+            }
+
             updates.clasificacion = clasificacion;
         }
 
         if (isDeleted !== undefined) {
             if (typeof isDeleted !== "number" || (isDeleted !== 0 && isDeleted !== 1)) {
-                return res.status(400).json({
-                    message: "Tipo de dato inválido para 'isDeleted'"
-                });
+                errors.push("Tipo de dato inválido para 'isDeleted'");
             }
             updates.isDeleted = isDeleted;
+        }
+
+        // Si hay errores, devolverlos
+        if (errors.length > 0) {
+            return res.status(400).json({ errors });
         }
 
         // Construir la consulta de actualización
@@ -181,6 +213,7 @@ export const updateTipoMaquina = async (req, res) => {
         const [rows] = await pool.query("SELECT * FROM tipo_maquina WHERE id = ?", [idNumber]);
         res.json(rows[0]);
     } catch (error) {
+        console.error('Error: ', error);
         return res.status(500).json({
             message: "Error interno del servidor",
             error: error.message
