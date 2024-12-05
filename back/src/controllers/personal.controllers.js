@@ -189,24 +189,28 @@ export const getPersonalbyID = async (req, res) => {
 
 
 export const createPersonal = async (req, res) => {
-    const {
-        rol_personal_id,
+    let {
+        rol_personal_id, // foranea
         rut,
         nombre,
         apellido,
-        compania_id,
+        compania_id, // foranea
         fec_nac,
         img_url = '',
         obs = '',
-        fec_ingreso, // Nuevo campo
+        fec_ingreso,
         ven_licencia // campo opcional
     } = req.body;
 
     const errors = []; // Array para almacenar los errores
 
     try {
+        // Validación de datos
         const rolPersonalIdNumber = parseInt(rol_personal_id);
         const companiaIdNumber = parseInt(compania_id);
+        rut = String(rut).trim();
+        nombre = String(nombre).trim();
+        apellido = String(apellido).trim();
 
         // Validación de tipo de datos
         if (
@@ -224,6 +228,19 @@ export const createPersonal = async (req, res) => {
         const [rutExists] = await pool.query("SELECT 1 FROM personal WHERE rut = ? AND isDeleted = 0", [rut]);
         if (rutExists.length > 0) {
             errors.push('El RUT ya está registrado en el sistema.');
+        }
+
+        // Validación de longitud de campos
+        if (rut.length > 12) {
+            errors.push('El RUT no puede tener más de 12 caracteres');
+        }
+
+        if (nombre.length > 50) {
+            errors.push('El nombre no puede tener más de 50 caracteres');
+        }
+
+        if (apellido.length > 50) {
+            errors.push('El apellido no puede tener más de 50 caracteres');
         }
 
         // Validación de existencia de llaves foráneas

@@ -73,7 +73,7 @@ export const getCompania = async(req, res)=>{
 }
 
 export const createCompania = async (req, res) => {
-    const { nombre } = req.body;
+    let { nombre } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
@@ -141,7 +141,7 @@ export const deleteCompania = async(req, res) =>{
 
 export const updateCompania = async (req, res) => {
     const { id } = req.params;
-    const { nombre, isDeleted } = req.body;
+    let { nombre, isDeleted } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
@@ -154,7 +154,7 @@ export const updateCompania = async (req, res) => {
         const updates = {};
         if (nombre !== undefined) {
             nombre = String(nombre).trim();
-            
+
             if (typeof nombre !== "string") {
                 errors.push("Tipo de dato inválido para 'nombre'");
             }
