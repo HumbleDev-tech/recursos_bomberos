@@ -80,6 +80,9 @@ export const createRolPersonal = async (req, res) => {
     let errors = [];
 
     try {
+        nombre = String(nombre).trim();
+        descripcion = String(descripcion).trim();
+
         // Validación de datos
         if (typeof nombre !== "string") {
             errors.push("Tipo de datos inválido para 'nombre'");
@@ -87,11 +90,6 @@ export const createRolPersonal = async (req, res) => {
 
         if (typeof descripcion !== "string") {
             errors.push("Tipo de datos inválido para 'descripcion'");
-        }
-
-        // Validar largo de datos
-        if (nombre.trim().length === 0 || descripcion.trim().length === 0) {
-            errors.push("Datos no pueden estar vacíos");
         }
 
         // Validar longitud
@@ -169,6 +167,8 @@ export const updateRolPersonal = async (req, res) => {
         const updates = {};
 
         if (nombre !== undefined) {
+            nombre = String(nombre).trim();
+
             if (typeof nombre !== "string") {
                 errors.push("Tipo de dato inválido para 'nombre'");
             }
@@ -188,6 +188,8 @@ export const updateRolPersonal = async (req, res) => {
         }
 
         if (descripcion !== undefined) {
+            descripcion = String(descripcion).trim();
+            
             if (typeof descripcion !== "string") {
                 errors.push("Tipo de dato inválido para 'descripcion'");
             }

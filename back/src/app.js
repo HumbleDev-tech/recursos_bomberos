@@ -2,7 +2,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import morgan from "morgan";
-// TODO: import desde routes
+
 import indexRoutes from './routes/index.routes.js';
 
 import bitacoraRoutes from './routes/bitacora.routes.js';
@@ -36,7 +36,6 @@ app.use(cookieParser());
 const base_route = "/api/";
 
 
-// TODO:  rutas de la api
 app.use(indexRoutes);
 app.use(base_route, rol_personalRoutes); 
 app.use(base_route, companiaRoutes); 

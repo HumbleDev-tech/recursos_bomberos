@@ -77,6 +77,8 @@ export const createCompania = async (req, res) => {
     const errors = []; // Arreglo para capturar errores
 
     try {
+        nombre = String(nombre).trim();
+
         // Validación de datos
         if (typeof nombre !== "string") {
             errors.push("Tipo de datos inválido para 'nombre'");
@@ -151,6 +153,8 @@ export const updateCompania = async (req, res) => {
         // Validaciones
         const updates = {};
         if (nombre !== undefined) {
+            nombre = String(nombre).trim();
+            
             if (typeof nombre !== "string") {
                 errors.push("Tipo de dato inválido para 'nombre'");
             }
