@@ -350,17 +350,17 @@ export const downPersonal = async (req, res) => {
 
 export const updatePersonal = async (req, res) => {
     const { id } = req.params;
-    const {
-        rol_personal_id,
+    let {
+        rol_personal_id, // foranea
         rut,
         nombre,
         apellido,
-        compania_id,
+        compania_id, // foranea
         fec_nac,
         img_url,
         obs,
         isDeleted,
-        fec_ingreso, // Nuevo campo
+        fec_ingreso,
         ven_licencia // campo opcional      
     } = req.body;
 
@@ -390,8 +390,13 @@ export const updatePersonal = async (req, res) => {
         }
 
         if (rut !== undefined) {
+            rut = String(rut).trim();
             if (typeof rut !== 'string') {
                 errors.push("Tipo de dato inválido para 'rut'");
+            }
+
+            if(!validateRUT(rut)){
+                errors.push('El RUT ingresado no es válido');
             }
 
             const [rutExists] = await pool.query("SELECT 1 FROM personal WHERE rut = ? AND isDeleted = 0", [rut]);
@@ -403,6 +408,7 @@ export const updatePersonal = async (req, res) => {
         }
 
         if (nombre !== undefined) {
+            nombre = String(nombre).trim();
             if (typeof nombre !== 'string') {
                 errors.push("Tipo de dato inválido para 'nombre'");
             }
@@ -410,6 +416,7 @@ export const updatePersonal = async (req, res) => {
         }
 
         if (apellido !== undefined) {
+            apellido = String(apellido).trim();
             if (typeof apellido !== 'string') {
                 errors.push("Tipo de dato inválido para 'apellido'");
             }

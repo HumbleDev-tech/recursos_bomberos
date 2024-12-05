@@ -1,49 +1,30 @@
-// Función para validar el RUT chileno
 export function validateRUT(rut) {
-    // Eliminar puntos y guion
-    rut = rut.replace('.', '').replace('-', '');
+  // Eliminar los puntos y el guion
+  const cleanRUT = rut.replace(/[.\-]/g, "");
 
-    // Verificar que el RUT tenga al menos 2 caracteres (número y dígito verificador)
-    if (rut.length < 2) {
-        return false;
-    }
+  // Verificar que el formato sea correcto (Debe ser un número seguido de un dígito verificador)
+  const rutPattern = /^\d{7,8}[0-9K]$/i;
+  if (!rutPattern.test(cleanRUT)) {
+    return false;
+  }
 
-    // Dividir en número del RUT y dígito verificador
-    const numeroRUT = rut.slice(0, -1);
-    const digitoVerificador = rut.slice(-1).toUpperCase();
+  // Extraer el cuerpo y el dígito verificador
+  const cuerpo = cleanRUT.slice(0, -1);
+  const dv = cleanRUT.slice(-1).toUpperCase();
 
-    // Verificar que el número del RUT sea solo dígitos
-    if (!/^\d+$/.test(numeroRUT)) {
-        return false;
-    }
+  // Calcular el dígito verificador usando el algoritmo estándar
+  let suma = 0;
+  let multiplo = 2;
 
-    // Verificar que el dígito verificador sea válido (debe ser un número o 'K')
-    if (!/^\d$|^K$/.test(digitoVerificador)) {
-        return false;
-    }
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += parseInt(cuerpo.charAt(i)) * multiplo;
+    multiplo = multiplo === 7 ? 2 : multiplo + 1;
+  }
 
-    // Calcular el dígito verificador
-    let suma = 0;
-    let multiplicador = 2;
+  const resto = suma % 11;
+  const calculoDV =
+    resto === 1 ? "K" : resto === 0 ? "0" : (11 - resto).toString();
 
-    // Recorrer el número del RUT de derecha a izquierda
-    for (let i = numeroRUT.length - 1; i >= 0; i--) {
-        suma += parseInt(numeroRUT.charAt(i)) * multiplicador;
-        multiplicador = multiplicador === 7 ? 2 : multiplicador + 1;
-    }
-
-    // Obtener el dígito verificador calculado
-    const digitoCalculado = 11 - (suma % 11);
-    let digitoFinal;
-
-    if (digitoCalculado === 11) {
-        digitoFinal = '0';
-    } else if (digitoCalculado === 10) {
-        digitoFinal = 'K';
-    } else {
-        digitoFinal = digitoCalculado.toString();
-    }
-
-    // Comparar el dígito calculado con el proporcionado
-    return digitoVerificador === digitoFinal;
+  // Comprobar si el dígito verificador coincide con el calculado
+  return dv === calculoDV;
 }
