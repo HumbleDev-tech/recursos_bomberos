@@ -4,6 +4,7 @@ import {
     updateImageUrlInDb,
     uploadFileToS3
 } from './fileUpload.js';
+import { validateRUT } from '../utils/validations.js';
 
 // TODO: Validación de ruts
 
@@ -233,6 +234,10 @@ export const createPersonal = async (req, res) => {
         // Validación de longitud de campos
         if (rut.length > 12) {
             errors.push('El RUT no puede tener más de 12 caracteres');
+        }
+
+        if (!validateRUT(rut)) {
+            errors.push('El RUT ingresado no es válido');
         }
 
         if (nombre.length > 50) {
