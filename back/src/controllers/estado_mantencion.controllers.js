@@ -80,10 +80,12 @@ export const getEstadoMantencionById = async (req, res) => {
 
 // Crear estado de mantención
 export const createEstadoMantencion = async (req, res) => {
-    const { nombre, descripcion } = req.body;
+    let { nombre, descripcion } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
+        nombre = String(nombre).trim();
+        descripcion = String(descripcion).trim();
         // Validar tipos de datos
         if (typeof nombre !== 'string') {
             errors.push('Tipo de dato inválido para "nombre"');
@@ -157,7 +159,7 @@ export const deleteEstadoMantencion = async (req, res) => {
 // Actualizar estado de mantención
 export const updateEstadoMantencion = async (req, res) => {
     const { id } = req.params;
-    const { nombre, descripcion, isDeleted } = req.body;
+    let { nombre, descripcion, isDeleted } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
@@ -165,6 +167,7 @@ export const updateEstadoMantencion = async (req, res) => {
 
         // validaciones "nombre"
         if (nombre !== undefined) {
+            nombre = String(nombre).trim();
             // Validar tipo de dato
             if (typeof nombre !== 'string') {
                 errors.push('Tipo de dato inválido para "nombre"');
@@ -183,6 +186,7 @@ export const updateEstadoMantencion = async (req, res) => {
 
         // validaciones "descripcion"
         if (descripcion !== undefined) {
+            descripcion = String(descripcion).trim();
             // Validar tipo de dato
             if (typeof descripcion !== 'string') {
                 errors.push('Tipo de dato inválido para "descripcion"');

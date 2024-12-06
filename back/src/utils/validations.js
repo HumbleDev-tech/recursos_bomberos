@@ -59,3 +59,18 @@ export function validateFloat(value) {
   
   return null;
 }
+
+
+/**
+ * Validates the structure of an email address.
+ *
+ * @param {string} email - The email address to validate.
+ * @returns {boolean} - Returns true if the email address is valid, otherwise false.
+ */
+export function validateEmail(email) {
+  // Expresión regular para validar la estructura del correo electrónico
+  const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+  // Comprobación si el email cumple con la expresión regular
+  return regex.test(email);
+}

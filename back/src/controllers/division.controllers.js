@@ -86,8 +86,8 @@ export const createDivision = async (req, res) => {
         }
   
         // Validación de longitud del nombre
-        if (nombre.length < 3 || nombre.length > 50) {
-          errors.push("La longitud del nombre debe estar entre 3 y 50 caracteres");
+        if (nombre.length < 3 || nombre.length > 45) {
+          errors.push("La longitud del nombre debe estar entre 3 y 45 caracteres");
         }
       
         // Validación si ya existe una división con el mismo nombre
@@ -143,7 +143,7 @@ export const deleteDivision = async (req, res) => {
 // Actualizar una división
 export const updateDivision = async (req, res) => {
     const { id } = req.params;
-    const { nombre, isDeleted } = req.body;
+    let { nombre, isDeleted } = req.body;
     const idNumber = parseInt(id);
     const errors = []; // Arreglo para capturar errores
 
@@ -156,13 +156,15 @@ export const updateDivision = async (req, res) => {
         
         // Validación de nombre
         if (nombre !== undefined) {
+            nombre = String(nombre).trim();
+            // Validar tipo de datos
             if (typeof nombre !== "string") {
                 errors.push("Tipo de datos inválido para 'nombre'");
             }
 
             // Validar longitud del nombre
-            if (nombre.length < 3 || nombre.length > 50) {
-                errors.push("La longitud del nombre debe estar entre 3 y 50 caracteres");
+            if (nombre.length < 3 || nombre.length > 45) {
+                errors.push("La longitud del nombre debe estar entre 3 y 45 caracteres");
             }
 
             // Validar si ya existe una división con el mismo nombre
