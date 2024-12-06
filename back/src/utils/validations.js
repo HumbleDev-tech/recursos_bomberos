@@ -1,3 +1,13 @@
+/**
+ * Validates a Chilean RUT (Rol Único Tributario).
+ *
+ * This function removes any dots and hyphens from the input RUT, verifies the format,
+ * extracts the body and the check digit, and calculates the check digit using the standard algorithm.
+ * It then compares the calculated check digit with the provided one to determine if the RUT is valid.
+ *
+ * @param {string} rut - The RUT to be validated. It can contain dots and hyphens.
+ * @returns {boolean} - Returns `true` if the RUT is valid, otherwise `false`.
+ */
 export function validateRUT(rut) {
   // Eliminar los puntos y el guion
   const cleanRUT = rut.replace(/[.\-]/g, "");
@@ -27,4 +37,25 @@ export function validateRUT(rut) {
 
   // Comprobar si el dígito verificador coincide con el calculado
   return dv === calculoDV;
+}
+
+
+/**
+ * Validates if the given value is a valid float number.
+ *
+ * @param {string|number} value - The value to be validated.
+ * @returns {string|null} - Returns an error message if the value is not a valid float or is negative, otherwise returns null.
+ */
+export function validateFloat(value) {
+  const floatValue = parseFloat(value);
+  
+  if (isNaN(floatValue)) {
+      return "El valor debe ser un número válido.";
+  }
+  
+  if (floatValue < 0) {
+      return "El valor no puede ser negativo.";
+  }
+  
+  return null;
 }

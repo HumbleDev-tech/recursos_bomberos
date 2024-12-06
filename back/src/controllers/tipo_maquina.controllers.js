@@ -75,18 +75,30 @@ export const getTipoMaquinaById = async (req, res) => {
 
 // Crear tipo de máquina
 export const createTipoMaquina = async (req, res) => {
-    const { clasificacion } = req.body;
+    let { clasificacion, descripcion } = req.body;
     let errors = [];
 
     try {
+        clasificacion = String(clasificacion).trim();
+        descripcion = String(descripcion).trim();
+
         // Validación de datos
         if (typeof clasificacion !== 'string') {
             errors.push('Tipo de datos inválido para "clasificacion"');
         }
 
+        if (typeof descripcion !== 'string') {
+            errors.push('Tipo de datos inválido para "descripcion"');
+        }
+
         // Validar largo de clasificacion
         if (clasificacion.length > 50) {
             errors.push('La clasificación debe tener un largo máximo de 50 caracteres');
+        }
+
+        // Validar largo de descripción
+        if (descripcion.length > 100) {
+            errors.push('La descripción debe tener un largo máximo de 100 caracteres');
         }
 
         // Validar si existe tipo de máquina con la misma clasificación
@@ -148,7 +160,7 @@ export const deleteTipoMaquina = async (req, res) => {
 // Actualizar tipo de máquina
 export const updateTipoMaquina = async (req, res) => {
     const { id } = req.params;
-    const { clasificacion, isDeleted } = req.body;
+    let { clasificacion, descripcion, isDeleted } = req.body;
     let errors = [];
 
     try {
@@ -160,6 +172,7 @@ export const updateTipoMaquina = async (req, res) => {
         // Validaciones
         const updates = {};
         if (clasificacion !== undefined) {
+            clasificacion = String(clasificacion).trim();
             if (typeof clasificacion !== 'string') {
                 errors.push('Tipo de dato inválido para "clasificacion"');
             }
@@ -176,6 +189,20 @@ export const updateTipoMaquina = async (req, res) => {
             }
 
             updates.clasificacion = clasificacion;
+        }
+
+        if (descripcion !== undefined) {
+            descripcion = String(descripcion).trim();
+            if (typeof descripcion !== 'string') {
+                errors.push('Tipo de dato inválido para "descripcion"');
+            }
+
+            // Validar largo de descripción
+            if (descripcion.length > 100) {
+                errors.push('La descripción debe tener un largo máximo de 100 caracteres');
+            }
+
+            updates.descripcion = descripcion;
         }
 
         if (isDeleted !== undefined) {

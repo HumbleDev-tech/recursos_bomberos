@@ -6,8 +6,6 @@ import {
 } from './fileUpload.js';
 import { validateRUT } from '../utils/validations.js';
 
-// TODO: Validación de ruts
-
 // Devuelve todos los personales
 export const getPersonal = async (req, res) => {
     try {

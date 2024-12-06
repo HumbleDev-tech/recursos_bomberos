@@ -66,10 +66,13 @@ export const getClaveById = async (req, res) => {
 
 // Crear nueva clave
 export const createClave = async (req, res) => {
-    const { codigo, descripcion } = req.body;
+    let { codigo, descripcion } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
+        codigo = String(codigo).trim();
+        descripcion = String(descripcion).trim();
+
         // Validar tipos de datos
         if (typeof codigo !== 'string') {
             errors.push('Tipo de dato inválido para "codigo"');
@@ -129,7 +132,7 @@ export const deleteClave = async (req, res) => {
 // Actualizar clave
 export const updateClave = async (req, res) => {
     const { id } = req.params;
-    const { codigo, descripcion, isDeleted } = req.body;
+    let { codigo, descripcion, isDeleted } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
@@ -141,6 +144,8 @@ export const updateClave = async (req, res) => {
         // Validaciones
         const updates = {};
         if (codigo !== undefined) {
+            codigo = String(codigo).trim();
+            // Validar tipo de dato
             if (typeof codigo !== "string") {
                 errors.push("Tipo de dato inválido para 'codigo'");
             }
@@ -162,6 +167,7 @@ export const updateClave = async (req, res) => {
         }
 
         if (descripcion !== undefined) {
+            descripcion = String(descripcion).trim();
             if (typeof descripcion !== "string") {
                 errors.push("Tipo de dato inválido para 'descripcion'");
             }

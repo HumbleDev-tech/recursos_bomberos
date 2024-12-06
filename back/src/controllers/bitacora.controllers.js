@@ -1,4 +1,5 @@
 import { pool } from "../db.js";
+import { validateFloat } from "../utils/validations.js";
 
 // Nueva función getBitacora con filtros
 export const getBitacora = async (req, res) => {
@@ -7,7 +8,7 @@ export const getBitacora = async (req, res) => {
         let query = `
             SELECT b.id, 
                    c.nombre AS compania, 
-                   p.rut AS "rut_personal", 
+                   p.rut AS "rut_conductor", 
                    m.patente AS "patente_maquina", 
                    tm.clasificacion AS tipo_maquina, 
                    DATE_FORMAT(b.fh_salida, '%d-%m-%Y %H:%i') AS fh_salida, 
@@ -23,9 +24,8 @@ export const getBitacora = async (req, res) => {
                    b.obs 
             FROM bitacora b 
             INNER JOIN compania c ON b.compania_id = c.id AND c.isDeleted = 0
-            INNER JOIN conductor_maquina cm ON b.conductor_id = cm.id AND cm.isDeleted = 0 
             INNER JOIN clave cl ON b.clave_id = cl.id AND cl.isDeleted = 0 
-            INNER JOIN personal p ON cm.personal_id = p.id AND p.isDeleted = 0
+            INNER JOIN personal p ON b.personal_id = p.id AND p.isDeleted = 0
             INNER JOIN maquina m ON b.maquina_id = m.id AND m.isDeleted = 0
             INNER JOIN tipo_maquina tm ON m.tipo_maquina_id = tm.id AND tm.isDeleted = 0
             WHERE b.isDeleted = 0`;
@@ -74,7 +74,7 @@ export const getBitacoraPage = async (req, res) => {
         const query = `
             SELECT b.id, 
                     c.nombre AS compania, 
-                    p.rut AS "rut_personal", 
+                    p.rut AS "rut_conductor", 
                     m.patente AS "patente_maquina", 
                     tm.clasificacion AS tipo_maquina, 
                     DATE_FORMAT(b.fh_salida, '%d-%m-%Y %H:%i') AS fh_salida, 
@@ -90,9 +90,8 @@ export const getBitacoraPage = async (req, res) => {
                     b.obs 
             FROM bitacora b 
             INNER JOIN compania c ON b.compania_id = c.id AND c.isDeleted = 0
-            INNER JOIN conductor_maquina cm ON b.conductor_id = cm.id AND cm.isDeleted = 0 
             INNER JOIN clave cl ON b.clave_id = cl.id AND cl.isDeleted = 0 
-            INNER JOIN personal p ON cm.personal_id = p.id AND p.isDeleted = 0
+            INNER JOIN personal p ON b.personal_id = p.id AND p.isDeleted = 0
             INNER JOIN maquina m ON b.maquina_id = m.id AND m.isDeleted = 0
             INNER JOIN tipo_maquina tm ON m.tipo_maquina_id = tm.id AND tm.isDeleted = 0
             WHERE b.isDeleted = 0
@@ -115,7 +114,7 @@ export const getBitacoraById = async (req, res) => {
         const [rows] = await pool.query(
             `SELECT b.id, 
                     c.nombre AS compania, 
-                    p.rut AS "rut_personal", 
+                    p.rut AS "rut_conductor", 
                     m.patente AS "patente_maquina", 
                     tm.clasificacion AS tipo_maquina, 
                     DATE_FORMAT(b.fh_salida, '%d-%m-%Y %H:%i') AS fh_salida, 
@@ -131,9 +130,8 @@ export const getBitacoraById = async (req, res) => {
                     b.obs 
              FROM bitacora b 
              INNER JOIN compania c ON b.compania_id = c.id AND c.isDeleted = 0
-             INNER JOIN conductor_maquina cm ON b.conductor_id = cm.id AND cm.isDeleted = 0 
              INNER JOIN clave cl ON b.clave_id = cl.id AND cl.isDeleted = 0 
-             INNER JOIN personal p ON cm.personal_id = p.id AND p.isDeleted = 0
+             INNER JOIN personal p ON b.personal_id = p.id AND p.isDeleted = 0
              INNER JOIN maquina m ON b.maquina_id = m.id AND m.isDeleted = 0
              INNER JOIN tipo_maquina tm ON m.tipo_maquina_id = tm.id AND tm.isDeleted = 0
              WHERE b.isDeleted = 0 AND b.id = ?`,
@@ -154,9 +152,9 @@ export const getBitacoraById = async (req, res) => {
 
 // Crear una nueva bitácora
 export const createBitacora = async (req, res) => {
-    const {
+    let {
         compania_id,
-        conductor_id,
+        personal_id,
         maquina_id,
         direccion,
         f_salida,
@@ -176,6 +174,8 @@ export const createBitacora = async (req, res) => {
     const errors = []; // Array para capturar errores
 
     try {
+        direccion = String(direccion).trim();
+
         // Concatenar fecha y hora solo si ambas están presentes
         let fh_salida = null;
         let fh_llegada = null;
@@ -189,13 +189,13 @@ export const createBitacora = async (req, res) => {
 
         // Validación de datos
         const companiaIdNumber = parseInt(compania_id);
-        const conductorIdNumber = parseInt(conductor_id);
+        const personalIdNumber = parseInt(personal_id);
         const maquinaIdNumber = parseInt(maquina_id);
         const claveIdNumber = parseInt(clave_id);
 
         if (
             isNaN(companiaIdNumber) ||
-            isNaN(conductorIdNumber) ||
+            isNaN(personalIdNumber) ||
             isNaN(maquinaIdNumber) ||
             isNaN(claveIdNumber) ||
             typeof direccion !== 'string'
@@ -209,9 +209,10 @@ export const createBitacora = async (req, res) => {
             errors.push("Compania no existe o está eliminada");
         }
 
-        const [conductorExists] = await pool.query("SELECT 1 FROM conductor_maquina WHERE id = ? AND isDeleted = 0", [conductorIdNumber]);
-        if (conductorExists.length === 0) {
-            errors.push("Conductor no existe o está eliminado");
+        // TODO: validacion de conductor (si existe valor en el campo 'ven_licencia')
+        const [personalExists] = await pool.query("SELECT 1 FROM personal WHERE id = ? AND isDeleted = 0", [personalIdNumber]);
+        if (personalExists.length === 0) {
+            errors.push("Personal no existe o está eliminado");
         }
 
         const [maquinaExists] = await pool.query("SELECT 1 FROM maquina WHERE id = ? AND isDeleted = 0", [maquinaIdNumber]);
@@ -224,6 +225,67 @@ export const createBitacora = async (req, res) => {
             errors.push("Clave no existe o está eliminada");
         }
 
+        if (direccion.length > 100) {
+            errors.push('La dirección no puede tener más de 100 caracteres');
+        }
+
+        // TODO: Validar que los datos no sean menores a los de la última bitácora del mismo vehículo
+        // validación de números
+        if(km_llegada !== undefined) {
+            const error = validateFloat(km_llegada);
+            if (error) {
+                errors.push(`Km llegada: ${error}`);
+            }
+        } else {
+            errors.push('Km llegada es requerido');
+        }
+
+        if(km_salida !== undefined) {
+            const error = validateFloat(km_salida);
+            if (error) {
+                errors.push(`Km salida: ${error}`);
+            }
+        } else {
+            errors.push('Km salida es requerido');
+        }
+
+        if(hmetro_llegada !== undefined) {
+            const error = validateFloat(hmetro_llegada);
+            if (error) {
+                errors.push(`Hmetro llegada: ${error}`);
+            }
+        } else {
+            errors.push('Hmetro llegada es requerido');
+        }
+
+        if(hmetro_salida !== undefined) {
+            const error = validateFloat(hmetro_salida);
+            if (error) {
+                errors.push(`Hmetro salida: ${error}`);
+            }
+        } else {
+            errors.push('Hmetro salida es requerido');
+        }
+
+        if(hbomba_llegada !== undefined) {
+            const error = validateFloat(hbomba_llegada);
+            if (error) {
+                errors.push(`Hbomba llegada: ${error}`);
+            }
+        } else {
+            errors.push('Hbomba llegada es requerido');
+        }
+
+        if(hbomba_salida !== undefined) {
+            const error = validateFloat(hbomba_salida);
+            if (error) {
+                errors.push(`Hbomba salida: ${error}`);
+            }
+        } else {
+            errors.push('Hbomba salida es requerido');
+        }
+
+        // TODO: Validar que la fecha y hora de salida no sea mayor a la de llegada y viceversa
         // Validación de fecha y hora si están presentes
         const fechaRegex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$/;
         const horaRegex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
@@ -246,10 +308,10 @@ export const createBitacora = async (req, res) => {
 
         // Inserción en la base de datos
         const [rows] = await pool.query(
-            'INSERT INTO bitacora (compania_id, conductor_id, maquina_id, direccion, fh_salida, fh_llegada, clave_id, km_salida, km_llegada, hmetro_salida, hmetro_llegada, hbomba_salida, hbomba_llegada, obs, isDeleted) VALUES (?, ?, ?, ?, STR_TO_DATE(?, "%d-%m-%Y %H:%i"), STR_TO_DATE(?, "%d-%m-%Y %H:%i"), ?, ?, ?, ?, ?, ?, ?, ?, 0)',
+            'INSERT INTO bitacora (compania_id, personal_id, maquina_id, direccion, fh_salida, fh_llegada, clave_id, km_salida, km_llegada, hmetro_salida, hmetro_llegada, hbomba_salida, hbomba_llegada, obs, isDeleted) VALUES (?, ?, ?, ?, STR_TO_DATE(?, "%d-%m-%Y %H:%i"), STR_TO_DATE(?, "%d-%m-%Y %H:%i"), ?, ?, ?, ?, ?, ?, ?, ?, 0)',
             [
                 companiaIdNumber,
-                conductorIdNumber,
+                personalIdNumber,
                 maquinaIdNumber,
                 direccion,
                 fh_salida,
@@ -268,7 +330,7 @@ export const createBitacora = async (req, res) => {
         res.status(201).json({
             id: rows.insertId,
             companiaIdNumber,
-            conductorIdNumber,
+            personalIdNumber,
             maquinaIdNumber,
             direccion,
             fh_salida,
@@ -310,9 +372,9 @@ export const deleteBitacora = async (req, res) => {
 /// Actualizar una bitácora
 export const updateBitacora = async (req, res) => {
     const { id } = req.params;
-    const {
+    let {
         compania_id,
-        conductor_id,
+        personal_id,
         maquina_id,
         clave_id,
         direccion,
@@ -344,6 +406,13 @@ export const updateBitacora = async (req, res) => {
 
         // Actualizar solo los campos que están en el body
         if (direccion !== undefined) {
+            direccion = String(direccion).trim();
+            if(typeof direccion !== 'string') {
+                errors.push('Tipo de dato inválido para "direccion"');
+            }
+            if (direccion.length > 100) {
+                errors.push('La dirección no puede tener más de 100 caracteres');
+            }
             updates.push("direccion = ?");
             values.push(direccion);
         }
@@ -373,17 +442,64 @@ export const updateBitacora = async (req, res) => {
             }
         }
 
-        // Validaciones y actualizaciones para los demás campos numéricos
-        const floatFields = ['km_salida', 'km_llegada', 'hmetro_salida', 'hmetro_llegada', 'hbomba_salida', 'hbomba_llegada'];
-        for (const field of floatFields) {
-            if (req.body[field] !== undefined) {
-                const value = parseFloat(req.body[field]);
-                if (isNaN(value)) {
-                    errors.push(`Tipo de dato inválido para '${field}'`);
-                } else {
-                    updates.push(`${field} = ?`);
-                    values.push(value);
-                }
+        // Validar y agregar los campos numéricos
+        if (km_llegada !== undefined) {
+            const error = validateFloat(km_llegada);
+            if (error) {
+                errors.push(`Km llegada: ${error}`);
+            } else {
+                updates.push("km_llegada = ?");
+                values.push(km_llegada);
+            }
+        }
+
+        if (km_salida !== undefined) {
+            const error = validateFloat(km_salida);
+            if (error) {
+                errors.push(`Km salida: ${error}`);
+            } else {
+                updates.push("km_salida = ?");
+                values.push(km_salida);
+            }
+        }
+        
+        if (hmetro_llegada !== undefined) {
+            const error = validateFloat(hmetro_llegada);
+            if (error) {
+                errors.push(`Hmetro llegada: ${error}`);
+            } else {
+                updates.push("hmetro_llegada = ?");
+                values.push(hmetro_llegada);
+            }
+        }
+
+        if (hmetro_salida !== undefined) {
+            const error = validateFloat(hmetro_salida);
+            if (error) {
+                errors.push(`Hmetro salida: ${error}`);
+            } else {
+                updates.push("hmetro_salida = ?");
+                values.push(hmetro_salida);
+            }
+        }
+
+        if (hbomba_llegada !== undefined) {
+            const error = validateFloat(hbomba_llegada);
+            if (error) {
+                errors.push(`Hbomba llegada: ${error}`);
+            } else {
+                updates.push("hbomba_llegada = ?");
+                values.push(hbomba_llegada);
+            }
+        }
+
+        if (hbomba_salida !== undefined) {
+            const error = validateFloat(hbomba_salida);
+            if (error) {
+                errors.push(`Hbomba salida: ${error}`);
+            } else {
+                updates.push("hbomba_salida = ?");
+                values.push(hbomba_salida);
             }
         }
 
@@ -398,13 +514,13 @@ export const updateBitacora = async (req, res) => {
             }
         }
 
-        if (conductor_id !== undefined) {
-            const [conductorExists] = await pool.query("SELECT 1 FROM conductor_maquina WHERE id = ? AND isDeleted = 0", [conductor_id]);
-            if (conductorExists.length === 0) {
-                errors.push("Conductor no existe o está eliminado");
+        if (personal_id !== undefined) {
+            const [personalExists] = await pool.query("SELECT 1 FROM personal WHERE id = ? AND isDeleted = 0", [personal_id]);
+            if (personalExists.length === 0) {
+                errors.push("Personal no existe o está eliminado");
             } else {
-                updates.push("conductor_id = ?");
-                values.push(conductor_id);
+                updates.push("personal_id = ?");
+                values.push(personal_id);
             }
         }
 

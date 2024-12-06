@@ -4,6 +4,7 @@ import {
     updateImageUrlInDb,
     handleError
 } from './fileUpload.js';
+import { validateFloat } from "../utils/validations.js";
 
 
 // Obtener todas las cargas de combustible
@@ -19,8 +20,7 @@ export const getCargasCombustible = async (req, res) => {
             FROM carga_combustible cc
             INNER JOIN bitacora b ON cc.bitacora_id = b.id
             INNER JOIN compania c ON b.compania_id = c.id
-            INNER JOIN conductor_maquina cm ON b.conductor_id = cm.id
-            INNER JOIN personal p ON cm.personal_id = p.id
+            INNER JOIN personal p ON b.personal_id = p.id
             WHERE cc.isDeleted = 0
         `;
         
@@ -69,8 +69,7 @@ export const getCargasCombustiblePage = async (req, res) => {
                 FROM carga_combustible cc
                 INNER JOIN bitacora b ON cc.bitacora_id = b.id
                 INNER JOIN compania c ON b.compania_id = c.id
-                INNER JOIN conductor_maquina cm ON b.conductor_id = cm.id
-                INNER JOIN personal p ON cm.personal_id = p.id
+                INNER JOIN personal p ON b.personal_id = p.id
                 WHERE cc.isDeleted = 0
             `;
             const [rows] = await pool.query(query);
@@ -90,8 +89,7 @@ export const getCargasCombustiblePage = async (req, res) => {
             FROM carga_combustible cc
             INNER JOIN bitacora b ON cc.bitacora_id = b.id
             INNER JOIN compania c ON b.compania_id = c.id
-            INNER JOIN conductor_maquina cm ON b.conductor_id = cm.id
-            INNER JOIN personal p ON cm.personal_id = p.id
+            INNER JOIN personal p ON b.personal_id = p.id
             WHERE cc.isDeleted = 0
             LIMIT ? OFFSET ?
         `;
@@ -144,8 +142,7 @@ export const getCargaCombustibleByID = async (req, res) => {
             FROM carga_combustible cc
             INNER JOIN bitacora b ON cc.bitacora_id = b.id
             INNER JOIN compania c ON b.compania_id = c.id
-            INNER JOIN conductor_maquina cm ON b.conductor_id = cm.id
-            INNER JOIN personal p ON cm.personal_id = p.id
+            INNER JOIN personal p ON b.personal_id = p.id
             WHERE cc.id = ? AND cc.isDeleted = 0
         `;
 
@@ -314,24 +311,59 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             errors.push("Clave no existe o está eliminada");
         }
 
-        // Validación de valores numéricos para los kilómetros y otros campos
-        const kmSalida = parseFloat(km_salida);
-        const kmLlegada = parseFloat(km_llegada);
-        const hmetroSalida = parseFloat(hmetro_salida);
-        const hmetroLlegada = parseFloat(hmetro_llegada);
-        const hbombaSalida = parseFloat(hbomba_salida);
-        const hbombaLlegada = parseFloat(hbomba_llegada);
+        // validacion de numeros flotantes
+        if(km_salida !== undefined){
+            const error = validateFloat(km_salida);
+            if(error){
+                errors.push(`km_salida: ${error}`);
+            } else {
+                errors.push('km_salida es requerido');
+            }
+        }
 
-        // Validar que los valores no sean negativos
-        if (
-            isNaN(kmSalida) || kmSalida < 0 ||
-            isNaN(kmLlegada) || kmLlegada < 0 ||
-            isNaN(hmetroSalida) || hmetroSalida < 0 ||
-            isNaN(hmetroLlegada) || hmetroLlegada < 0 ||
-            isNaN(hbombaSalida) || hbombaSalida < 0 ||
-            isNaN(hbombaLlegada) || hbombaLlegada < 0
-        ) {
-            errors.push("Los valores de kilómetros, horas metro o bomba no pueden ser negativos");
+        if(km_llegada !== undefined){
+            const error = validateFloat(km_llegada);
+            if(error){
+                errors.push(`km_llegada: ${error}`);
+            } else {
+                errors.push('km_llegada es requerido');
+            }
+        }
+
+        if(hmetro_salida !== undefined){
+            const error = validateFloat(hmetro_salida);
+            if(error){
+                errors.push(`hmetro_salida: ${error}`);
+            } else {
+                errors.push('hmetro_salida es requerido');
+            }
+        }
+
+        if(hmetro_llegada !== undefined){
+            const error = validateFloat(hmetro_llegada);
+            if(error){
+                errors.push(`hmetro_llegada: ${error}`);
+            } else {
+                errors.push('hmetro_llegada es requerido');
+            }
+        }
+
+        if(hbomba_salida !== undefined){
+            const error = validateFloat(hbomba_salida);
+            if(error){
+                errors.push(`hbomba_salida: ${error}`);
+            } else {
+                errors.push('hbomba_salida es requerido');
+            }
+        }
+
+        if(hbomba_llegada !== undefined){
+            const error = validateFloat(hbomba_llegada);
+            if(error){
+                errors.push(`hbomba_llegada: ${error}`);
+            } else {
+                errors.push('hbomba_llegada es requerido');
+            }
         }
 
         // Validación de litros y valor monetario
@@ -429,9 +461,15 @@ export const updateCargaCombustible = async (req, res) => {
         }
 
         // Validar litros y valor_mon
-        if (litros !== undefined && typeof litros !== 'number') {
-            errors.push('Tipo de datos inválido para litros');
+        // litros (float)
+        if (litros !== undefined ) {
+            const error = validateFloat(litros);
+            if (error) {
+                errors.push(`litros: ${error}`);
+            }
         }
+
+        // valor_mon (int)
         if (valor_mon !== undefined && typeof valor_mon !== 'number') {
             errors.push('Tipo de datos inválido para valor_mon');
         }

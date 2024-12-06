@@ -1,12 +1,10 @@
 import nodemailer from 'nodemailer';
 import { 
-    // HOST, 
-    // PORT, 
     GMAIL_USER, 
     GMAIL_PASS 
 } from '../config.js';
 
-// Crear el transporter reutilizable
+// Crear el transporter
 const transporter = nodemailer.createTransport({
     service: 'gmail',  // Usamos Gmail como servicio de correo
     auth: {

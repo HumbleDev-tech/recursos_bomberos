@@ -75,40 +75,41 @@ export const getDivision = async (req, res) => {
 
 // Crear una nueva división
 export const createDivision = async (req, res) => {
-    const { nombre } = req.body;
+    let { nombre } = req.body;
     const errors = []; // Arreglo para capturar errores
   
     try {
-      // Validación de tipo de datos
-      if (typeof nombre !== "string") {
-        errors.push("Tipo de datos inválido para 'nombre'");
-      }
+        nombre = String(nombre).trim();
+        // Validación de tipo de datos
+        if (typeof nombre !== "string") {
+          errors.push("Tipo de datos inválido para 'nombre'");
+        }
   
-      // Validación de longitud del nombre
-      if (nombre.length < 3 || nombre.length > 50) {
-        errors.push("La longitud del nombre debe estar entre 3 y 50 caracteres");
-      }
-  
-      // Validación si ya existe una división con el mismo nombre
-      const [divisionExists] = await pool.query('SELECT * FROM division WHERE nombre = ?', [nombre]);
-      if (divisionExists.length > 0) {
-        errors.push("Ya existe una división con el mismo nombre");
-      }
-  
-      // Si se encontraron errores, devolverlos
-      if (errors.length > 0) {
-        return res.status(400).json({ errors });
-      }
-  
-      // Crear la división con isDeleted = 0 por defecto
-      const [rows] = await pool.query('INSERT INTO division (nombre, isDeleted) VALUES (?, 0)', [nombre]);
-      res.status(201).json({
-        id: rows.insertId,
-        nombre
-      });
+        // Validación de longitud del nombre
+        if (nombre.length < 3 || nombre.length > 50) {
+          errors.push("La longitud del nombre debe estar entre 3 y 50 caracteres");
+        }
+      
+        // Validación si ya existe una división con el mismo nombre
+        const [divisionExists] = await pool.query('SELECT * FROM division WHERE nombre = ?', [nombre]);
+        if (divisionExists.length > 0) {
+          errors.push("Ya existe una división con el mismo nombre");
+        }
+      
+        // Si se encontraron errores, devolverlos
+        if (errors.length > 0) {
+          return res.status(400).json({ errors });
+        }
+      
+        // Crear la división con isDeleted = 0 por defecto
+        const [rows] = await pool.query('INSERT INTO division (nombre, isDeleted) VALUES (?, 0)', [nombre]);
+        res.status(201).json({
+          id: rows.insertId,
+          nombre
+        });
     } catch (error) {
-      errors.push(error.message);
-      return res.status(500).json({ message: "Error interno del servidor", errors });
+        errors.push(error.message);
+        return res.status(500).json({ message: "Error interno del servidor", errors });
     }
   };  
 
