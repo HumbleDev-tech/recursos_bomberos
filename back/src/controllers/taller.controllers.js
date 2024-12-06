@@ -5,7 +5,16 @@ import { validateRUT, validateEmail } from "../utils/validations.js";
 export const getTalleres = async (req, res) => {
   try {
     const query = `
-      SELECT t.id, t.nombre, t.fono
+      SELECT
+        t.id,
+        t.tipo,
+        t.razon_social,
+        t.rut,
+        t.telefono,
+        t.contacto,
+        t.tel_contacto,
+        t.direccion,
+        t.correo
       FROM taller t
       WHERE t.isDeleted = 0
     `;
@@ -29,7 +38,16 @@ export const getTalleresPage = async (req, res) => {
     // Si no se proporciona "page", devolver todos los datos sin paginación
     if (!req.query.page) {
       const query = `
-        SELECT t.id, t.nombre, t.fono
+        SELECT 
+          t.id, 
+          t.tipo, 
+          t.razon_social,
+          t.rut,
+          t.telefono,
+          t.contacto,
+          t.tel_contacto,
+          t.direccion,
+          t.correo
         FROM taller t
         WHERE t.isDeleted = 0
       `;
@@ -41,7 +59,16 @@ export const getTalleresPage = async (req, res) => {
     const offset = (page - 1) * pageSize; // Calcular el offset
 
     const query = `
-      SELECT t.id, t.nombre, t.fono
+      SELECT
+        t.id,
+        t.tipo,
+        t.razon_social,
+        t.rut,
+        t.telefono,
+        t.contacto,
+        t.tel_contacto,
+        t.direccion,
+        t.correo
       FROM taller t
       WHERE t.isDeleted = 0
       LIMIT ? OFFSET ?
