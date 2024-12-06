@@ -89,6 +89,12 @@ export const createConductorMaquina = async (req, res) => {
       errors.push("ID de máquina no válido");
     }
 
+    // validar si el personal ya esta asignado a esa maquina y viceversa
+    const [checkConductorMaquina] = await pool.query("SELECT * FROM conductor_maquina WHERE personal_id = ? AND maquina_id = ? AND isDeleted = 0", [personalIdNumber, maquinaIdNumber]);
+    if (checkConductorMaquina.length > 0) {
+      errors.push("El personal ya está asignado a esa máquina");
+    }
+
     // Si se encontraron errores, devolverlos
     if (errors.length > 0) {
       return res.status(400).json({ errors });
@@ -178,6 +184,14 @@ export const updateConductorMaquina = async (req, res) => {
         else {
           updates.maquina_id = maquina_id;
         }
+      }
+    }
+
+    // validar si el personal ya esta asignado a esa maquina y viceversa
+    if(maquina_id !== undefined && personal_id !== undefined){
+      const [checkConductorMaquina] = await pool.query("SELECT * FROM conductor_maquina WHERE personal_id = ? AND maquina_id = ? AND isDeleted = 0", [personal_id, maquina_id]);
+      if (checkConductorMaquina.length > 0) {
+        errors.push("El personal ya está asignado a esa máquina");
       }
     }
 

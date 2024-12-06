@@ -204,7 +204,7 @@ export const loginUser = async (req, res) => {
             rol_personal: rol,
             compania: company,
             img_url: img_url,
-        }, SECRET_JWT_KEY, { expiresIn: '12h' }); //por ahora 12 horas de duración para desarrollo
+        }, SECRET_JWT_KEY, { expiresIn: '5d' }); //por ahora 5 dias de duración para desarrollo
 
         //En lugar de establecer el token en una cookie,  enviarlo en el cuerpo de la respuesta
         res.status(200).json({

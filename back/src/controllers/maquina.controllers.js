@@ -1,4 +1,5 @@
 import { pool } from "../db.js";
+import { format } from 'date-fns';
 import {
   uploadFileToS3,
   updateImageUrlInDb,
@@ -64,27 +65,22 @@ export const getMaquinasDetailsPage = async (req, res) => {
     if (!req.query.page) {
       const query = `
         SELECT
-          m.id AS maquina_id,
-          m.disponible AS disponible,
-          m.codigo AS codigo,
-          m.patente AS patente,
-          m.num_chasis AS num_chasis,
-          m.vin AS vin,
-          m.bomba AS bomba,
-          m.hmetro_bomba AS hmetro_bomba,
-          m.hmetro_motor AS hmetro_motor,
-          m.kmetraje AS kmetraje,
-          m.num_motor AS num_motor,
-          DATE_FORMAT(m.ven_patente, '%d-%m-%Y') AS ven_patente,
-          m.cost_rev_tec AS cost_rev_tec,
-          DATE_FORMAT(m.ven_rev_tec, '%d-%m-%Y') AS ven_rev_tec,
-          m.cost_seg_auto AS cost_seg_auto,
-          DATE_FORMAT(m.ven_seg_auto, '%d-%m-%Y') AS ven_seg_auto,
+          m.*,
           tm.clasificacion AS tipo_maquina,
           c.id AS compania_id,
           c.nombre AS compania,
           p.nombre AS procedencia,
-          m.img_url AS img_url
+          (
+            SELECT JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'id', per.id,
+                'nombre', CONCAT(per.nombre, ' ', per.apellido)
+              )
+            )
+            FROM conductor_maquina cm
+            JOIN personal per ON cm.personal_id = per.id
+            WHERE cm.maquina_id = m.id AND cm.isDeleted = 0 AND per.isDeleted = 0
+          ) as conductores
         FROM maquina m
         INNER JOIN tipo_maquina tm ON m.tipo_maquina_id = tm.id
         INNER JOIN compania c ON m.compania_id = c.id
@@ -92,7 +88,17 @@ export const getMaquinasDetailsPage = async (req, res) => {
         WHERE m.isDeleted = 0
       `;
       const [rows] = await pool.query(query);
-      return res.json(rows); // Devuelve todos los registros sin paginación
+      // return res.json(rows); // Devuelve todos los registros sin paginación
+      // Formatear fechas y procesar conductores
+      const formattedRows = rows.map(row => ({
+        ...row,
+        ven_patente: row.ven_patente ? format(new Date(row.ven_patente), 'dd-MM-yyyy') : null,
+        ven_rev_tec: row.ven_rev_tec ? format(new Date(row.ven_rev_tec), 'dd-MM-yyyy') : null,
+        ven_seg_auto: row.ven_seg_auto ? format(new Date(row.ven_seg_auto), 'dd-MM-yyyy') : null,
+        conductores: row.conductores ? JSON.parse(row.conductores) : []
+      }));
+      
+      return res.json(formattedRows);
     }
 
     // Si se proporciona "page", se aplica paginación
@@ -100,27 +106,22 @@ export const getMaquinasDetailsPage = async (req, res) => {
 
     const query = `
       SELECT
-        m.id AS maquina_id,
-        m.disponible AS disponible,
-        m.codigo AS codigo,
-        m.patente AS patente,
-        m.num_chasis AS num_chasis,
-        m.vin AS vin,
-        m.bomba AS bomba,
-        m.hmetro_bomba AS hmetro_bomba,
-        m.hmetro_motor AS hmetro_motor,
-        m.kmetraje AS kmetraje,
-        m.num_motor AS num_motor,
-        DATE_FORMAT(m.ven_patente, '%d-%m-%Y') AS ven_patente,
-        m.cost_rev_tec AS cost_rev_tec,
-        DATE_FORMAT(m.ven_rev_tec, '%d-%m-%Y') AS ven_rev_tec,
-        m.cost_seg_auto AS cost_seg_auto,
-        DATE_FORMAT(m.ven_seg_auto, '%d-%m-%Y') AS ven_seg_auto,
+        m.*,
         tm.clasificacion AS tipo_maquina,
         c.id AS compania_id,
         c.nombre AS compania,
         p.nombre AS procedencia,
-        m.img_url AS img_url
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'id', per.id,
+              'nombre', CONCAT(per.nombre, ' ', per.apellido)
+            )
+          )
+          FROM conductor_maquina cm
+          JOIN personal per ON cm.personal_id = per.id
+          WHERE cm.maquina_id = m.id AND cm.isDeleted = 0 AND per.isDeleted = 0
+        ) as conductores
       FROM maquina m
       INNER JOIN tipo_maquina tm ON m.tipo_maquina_id = tm.id
       INNER JOIN compania c ON m.compania_id = c.id
@@ -130,7 +131,17 @@ export const getMaquinasDetailsPage = async (req, res) => {
     `;
     
     const [rows] = await pool.query(query, [pageSize, offset]);
-    res.json(rows);
+    // res.json(rows);
+    // Formatear fechas y procesar conductores
+    const formattedRows = rows.map(row => ({
+      ...row,
+      ven_patente: row.ven_patente ? format(row.ven_patente, 'dd-MM-yyyy') : null,
+      ven_rev_tec: row.ven_rev_tec ? format(row.ven_rev_tec, 'dd-MM-yyyy') : null,
+      ven_seg_auto: row.ven_seg_auto ? format(row.ven_seg_auto, 'dd-MM-yyyy') : null,
+      conductores: row.conductores ? JSON.parse(row.conductores) : []
+    }));
+    
+    res.json(formattedRows);
   } catch (error) {
     console.error('error: ', error);
     return res.status(500).json({
