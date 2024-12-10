@@ -10,10 +10,10 @@ export const getBitacora = async (req, res) => {
                    c.nombre AS compania, 
                    p.rut AS "rut_conductor", 
                    m.patente AS "patente_maquina", 
-                   tm.clasificacion AS tipo_maquina, 
+                   tm.nombre AS tipo_maquina, 
                    DATE_FORMAT(b.fh_salida, '%d-%m-%Y %H:%i') AS fh_salida, 
                    DATE_FORMAT(b.fh_llegada, '%d-%m-%Y %H:%i') AS fh_llegada, 
-                   cl.codigo AS clave, 
+                   cl.nombre AS clave, 
                    b.direccion, 
                    b.km_salida, 
                    b.km_llegada, 
@@ -45,7 +45,7 @@ export const getBitacora = async (req, res) => {
             params.push(`%${rut_personal}%`);
         }
         if (taller) {
-            query += " AND tm.clasificacion LIKE ?";
+            query += " AND tm.nombre LIKE ?";
             params.push(`%${taller}%`);
         }
         if (fecha_salida) {
@@ -76,10 +76,10 @@ export const getBitacoraPage = async (req, res) => {
                     c.nombre AS compania, 
                     p.rut AS "rut_conductor", 
                     m.patente AS "patente_maquina", 
-                    tm.clasificacion AS tipo_maquina, 
+                    tm.nombre AS tipo_maquina, 
                     DATE_FORMAT(b.fh_salida, '%d-%m-%Y %H:%i') AS fh_salida, 
                     DATE_FORMAT(b.fh_llegada, '%d-%m-%Y %H:%i') AS fh_llegada, 
-                    cl.codigo AS clave, 
+                    cl.nombre AS clave, 
                     b.direccion, 
                     b.km_salida, 
                     b.km_llegada, 
@@ -116,10 +116,10 @@ export const getBitacoraById = async (req, res) => {
                     c.nombre AS compania, 
                     p.rut AS "rut_conductor", 
                     m.patente AS "patente_maquina", 
-                    tm.clasificacion AS tipo_maquina, 
+                    tm.nombre AS tipo_maquina, 
                     DATE_FORMAT(b.fh_salida, '%d-%m-%Y %H:%i') AS fh_salida, 
                     DATE_FORMAT(b.fh_llegada, '%d-%m-%Y %H:%i') AS fh_llegada, 
-                    cl.codigo AS clave, 
+                    cl.nombre AS clave, 
                     b.direccion, 
                     b.km_salida, 
                     b.km_llegada, 

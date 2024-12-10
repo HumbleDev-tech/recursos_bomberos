@@ -1,7 +1,5 @@
 import { Router } from "express";
 import {
-  // getMantencionesWithDetails,
-  getMantencionesAllDetails,
   getMantencionesAllDetailsSearch,
   getMantencionAllDetailsById,
   createMantencion,
@@ -9,15 +7,17 @@ import {
   deleteMantencion,
   updateMantencion,
   updateImage,
-  // ---- reportes
-  getMantencionCostosByAnio,
-  getReporteMantencionesEstadoCosto,
-  getReporteGeneral,
+
 } from "../controllers/mantencion.controllers.js";
+import { 
+  getMantencionCostosByAnio,
+  getReporteGeneral, 
+  getReporteMantencionesEstadoCosto
+} from "../controllers/stats_mantencion.controllers.js";
 import multer from 'multer';
 import { checkRole } from "../controllers/authMiddleware.js";
 
-// Configuración de multer
+// Configuración de multers
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -25,10 +25,6 @@ const router = Router();
 
 const base_route = "/mantencion"; 
 
-// router.get(base_route, getMantencionesWithDetails);
-// router.get(base_route, getMantencionesAllDetails);
-
-// router.get(`${base_route}/search`, getMantencionesAllDetailsSearch);
 router.get(base_route, checkRole(['TELECOM']), getMantencionesAllDetailsSearch);
 // http://{url}/api/mantencion
 // QueryParams:

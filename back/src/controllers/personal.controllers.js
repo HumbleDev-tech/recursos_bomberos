@@ -2,6 +2,7 @@ import { pool } from "../db.js";
 import {
     handleError,
     updateImageUrlInDb,
+    saveImageUrlToDb,
     uploadFileToS3
 } from '../utils/fileUpload.js';
 import { validateRUT, validateDate } from '../utils/validations.js';

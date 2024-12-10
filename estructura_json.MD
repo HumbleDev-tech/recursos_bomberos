@@ -169,31 +169,30 @@ Se debe enviar un archivo en `form-data` con la clave `file`.
 ### "/api/mantencion"
 ```
 {
-    "bitacora": {
-        "compania_id": 2,
-        "conductor_id": 1,
-        "direccion": "Dirección de destino",
-        "f_salida": "01-01-2024",
-        "h_salida": "08:30",
-        "f_llegada": "01-01-2024",
-        "h_llegada": "12:45",
-        "clave_id": 3,
-        "km_salida": 1500,
-        "km_llegada": 1600,
-        "hmetro_salida": 120.5,
-        "hmetro_llegada": 130.7,
-        "hbomba_salida": 50,
-        "hbomba_llegada": 55.8,
-        "obs": "Observaciones adicionales si hay alguna"
-    },
-    "maquina_id": 1,
-    "taller_id": 1,
-    "estado_mantencion_id": 6,
-    "ord_trabajo": "OT12345",
-    "n_factura": 45678,
-    "cost_ser": 50000,
-    "fec_inicio": "01-01-2024",  // Esta fecha es opcional y debe ser en formato dd-mm-yyyy
-    "fec_termino": "02-01-2024"  // Esta fecha es opcional y debe ser en formato dd-mm-yyyy
+  "bitacora.compania_id": 2,
+  "bitacora.personal_id": 1,
+  "bitacora.direccion": "Dirección de destino",
+  "bitacora.f_salida": "01-01-2024",
+  "bitacora.h_salida": "08:30",
+  "bitacora.f_llegada": "01-01-2024",
+  "bitacora.h_llegada": "12:45",
+  "bitacora.clave_id": 3,
+  "bitacora.km_salida": 1500,
+  "bitacora.km_llegada": 1600,
+  "bitacora.hmetro_salida": 120.5,
+  "bitacora.hmetro_llegada": 130.7,
+  "bitacora.hbomba_salida": 50,
+  "bitacora.hbomba_llegada": 55.8,
+  "bitacora.obs": "Observaciones adicionales si hay alguna",
+  "maquina_id": 1,
+  "taller_id": 1,
+  "estado_mantencion_id": 6,
+  "tipo_mantencion_id": 1,
+  "ord_trabajo": "OT12345",
+  "n_factura": 45678,
+  "cost_ser": 50000,
+  "fec_inicio": "01-01-2024",  // Esta fecha es opcional y debe ser en formato dd-mm-yyyy
+  "fec_termino": "02-01-2024"  // Esta fecha es opcional y debe ser en formato dd-mm-yyyy
 }
 ```
 
