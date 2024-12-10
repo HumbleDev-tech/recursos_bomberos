@@ -1,4 +1,9 @@
 import {pool} from "../db.js";
+import {
+    uploadFileToS3,
+    updateImageUrlInDb,
+    handleError,
+} from "../utils/fileUpload.js";
 
 export const getCompanias = async(req, res)=>{
     try {
@@ -73,20 +78,34 @@ export const getCompania = async(req, res)=>{
 }
 
 export const createCompania = async (req, res) => {
-    let { nombre } = req.body;
+    let { 
+        nombre, 
+        direccion, 
+        img_url 
+    } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
         nombre = String(nombre).trim();
+        direccion = String(direccion).trim();
 
         // Validación de datos
         if (typeof nombre !== "string") {
             errors.push("Tipo de datos inválido para 'nombre'");
         }
 
+        if (typeof direccion !== "string") {
+            errors.push("Tipo de datos inválido para 'direccion'");
+        }
+
         // Validar la longitud del nombre
         if (nombre && nombre.length > 50) {
             errors.push("El nombre de la compañía es demasiado largo");
+        }
+
+        // Validar la longitud de la dirección
+        if (direccion && direccion.length > 100) {
+            errors.push("La dirección de la compañía es demasiado larga");
         }
 
         // Validar que no exista una compañía con el mismo nombre
@@ -101,11 +120,13 @@ export const createCompania = async (req, res) => {
         }
 
         // Insertar la compañía (activo por defecto)
-        const [rows] = await pool.query('INSERT INTO compania (nombre, isDeleted) VALUES (?, 0)', [nombre]);
+        const [rows] = await pool.query('INSERT INTO compania (nombre, direccion, img_url, isDeleted) VALUES (?, ?, NULL, 0)', [nombre, direccion]);
 
         res.status(201).json({
             id: rows.insertId,
-            nombre
+            nombre,
+            direccion,
+            isDeleted: 0
         });
     } catch (error) {
         errors.push(error.message);
@@ -141,7 +162,11 @@ export const deleteCompania = async(req, res) =>{
 
 export const updateCompania = async (req, res) => {
     const { id } = req.params;
-    let { nombre, isDeleted } = req.body;
+    let { 
+        nombre,
+        direccion,
+        img_url, 
+        isDeleted } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
@@ -171,6 +196,21 @@ export const updateCompania = async (req, res) => {
             }
 
             updates.nombre = nombre;
+        }
+
+        if (direccion !== undefined) {
+            direccion = String(direccion).trim();
+
+            if (typeof direccion !== "string") {
+                errors.push("Tipo de dato inválido para 'direccion'");
+            }
+
+            // Validar la longitud de la dirección
+            if (direccion.length > 100) {
+                errors.push("La dirección de la compañía es demasiado larga");
+            }
+
+            updates.direccion = direccion;
         }
 
         if (isDeleted !== undefined) {
@@ -213,5 +253,28 @@ export const updateCompania = async (req, res) => {
             message: "Error interno del servidor",
             errors
         });
+    }
+};
+
+const value = "compania";
+const folder = value;
+const tableName = value;
+const columnName = "img_url";
+
+export const updateImage = async (req, res) => {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+        return res.status(400).json({ message: "Falta el archivo." });
+    }
+
+    try {
+        const data = await uploadFileToS3(file, folder);
+        const newUrl = data.Location;
+        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
+        res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
+    } catch (error) {
+        handleError(res, error, "Error al actualizar la imagen");
     }
 };

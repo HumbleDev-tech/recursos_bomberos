@@ -74,3 +74,49 @@ export function validateEmail(email) {
   // Comprobación si el email cumple con la expresión regular
   return regex.test(email);
 }
+
+// Expresiones regulares para validar fecha y hora
+const fechaRegex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$/;
+const horaRegex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
+
+/**
+ * Validates a date and optionally a time.
+ *
+ * @param {string} fecha - The date string to validate.
+ * @param {string} [hora=''] - The optional time string to validate.
+ * @returns {boolean} - Returns true if the date (and optionally the time) is valid, otherwise false.
+ */
+export function validateDate(fecha, hora = '') {
+  // Validación de la fecha
+  if (!fechaRegex.test(fecha)) {
+    return false; // La fecha no es válida
+  }
+
+  // Si se proporciona una hora, validamos también
+  if (hora && !horaRegex.test(hora)) {
+    return false; // La hora no es válida
+  }
+
+  // Si no hay errores de validación, retornamos true
+  return true;
+}
+
+
+/**
+ * Validates if a value matches a specified type.
+ *
+ * @param {*} value - The value to be validated.
+ * @param {string} type - The type to validate against. Can be "array", "null", or any valid JavaScript type.
+ * @returns {boolean} - Returns true if the value matches the specified type, otherwise false.
+ */
+export function validateType(value, type) {
+  if (type === "array") {
+    return Array.isArray(value);
+  }
+
+  if (type === "null") {
+    return value === null;
+  }
+
+  return typeof value === type;
+}

@@ -3,7 +3,7 @@ import {
     uploadFileToS3,
     updateImageUrlInDb,
     handleError
-} from './fileUpload.js';
+} from '../utils/fileUpload.js';
 import { validateFloat } from "../utils/validations.js";
 
 
@@ -518,6 +518,7 @@ export const updateCargaCombustible = async (req, res) => {
 const value = "carga_combustible";
 const folder = value;
 const tableName = value;
+const columnName = "img_url";
 
 export const updateImage = async (req, res) => {
     const { id } = req.params;
@@ -530,7 +531,7 @@ export const updateImage = async (req, res) => {
     try {
         const data = await uploadFileToS3(file, folder);
         const newUrl = data.Location;
-        await updateImageUrlInDb(id, newUrl, tableName); // Pasa el nombre de la tabla
+        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
         res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
     } catch (error) {
         handleError(res, error, "Error al actualizar la imagen");

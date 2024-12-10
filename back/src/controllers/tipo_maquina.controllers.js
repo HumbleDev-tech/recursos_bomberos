@@ -75,24 +75,24 @@ export const getTipoMaquinaById = async (req, res) => {
 
 // Crear tipo de máquina
 export const createTipoMaquina = async (req, res) => {
-    let { clasificacion, descripcion } = req.body;
+    let { nombre, descripcion } = req.body;
     let errors = [];
 
     try {
-        clasificacion = String(clasificacion).trim();
+        nombre = String(nombre).trim();
         descripcion = String(descripcion).trim();
 
         // Validación de datos
-        if (typeof clasificacion !== 'string') {
-            errors.push('Tipo de datos inválido para "clasificacion"');
+        if (typeof nombre !== 'string') {
+            errors.push('Tipo de datos inválido para "nombre"');
         }
 
         if (typeof descripcion !== 'string') {
             errors.push('Tipo de datos inválido para "descripcion"');
         }
 
-        // Validar largo de clasificacion
-        if (clasificacion.length > 50) {
+        // Validar largo de nombre
+        if (nombre.length > 50) {
             errors.push('La clasificación debe tener un largo máximo de 50 caracteres');
         }
 
@@ -102,7 +102,7 @@ export const createTipoMaquina = async (req, res) => {
         }
 
         // Validar si existe tipo de máquina con la misma clasificación
-        const [tipoMaquinaExists] = await pool.query("SELECT * FROM tipo_maquina WHERE clasificacion = ? AND isDeleted = 0", [clasificacion]);
+        const [tipoMaquinaExists] = await pool.query("SELECT * FROM tipo_maquina WHERE nombre = ? AND isDeleted = 0", [nombre]);
         if (tipoMaquinaExists.length > 0) {
             errors.push('Ya existe un tipo de máquina con esa clasificación');
         }
@@ -113,10 +113,10 @@ export const createTipoMaquina = async (req, res) => {
         }
 
         // Crear el tipo de máquina
-        const [rows] = await pool.query("INSERT INTO tipo_maquina (clasificacion, isDeleted) VALUES (?, 0)", [clasificacion]);
+        const [rows] = await pool.query("INSERT INTO tipo_maquina (nombre, isDeleted) VALUES (?, 0)", [nombre]);
         res.status(201).json({
             id: rows.insertId,
-            clasificacion
+            nombre
         });
 
     } catch (error) {
@@ -160,7 +160,7 @@ export const deleteTipoMaquina = async (req, res) => {
 // Actualizar tipo de máquina
 export const updateTipoMaquina = async (req, res) => {
     const { id } = req.params;
-    let { clasificacion, descripcion, isDeleted } = req.body;
+    let { nombre, descripcion, isDeleted } = req.body;
     let errors = [];
 
     try {
@@ -171,24 +171,24 @@ export const updateTipoMaquina = async (req, res) => {
 
         // Validaciones
         const updates = {};
-        if (clasificacion !== undefined) {
-            clasificacion = String(clasificacion).trim();
-            if (typeof clasificacion !== 'string') {
-                errors.push('Tipo de dato inválido para "clasificacion"');
+        if (nombre !== undefined) {
+            nombre = String(nombre).trim();
+            if (typeof nombre !== 'string') {
+                errors.push('Tipo de dato inválido para "nombre"');
             }
 
-            // Validar largo de clasificacion
-            if (clasificacion.length > 50) {
+            // Validar largo de nombre
+            if (nombre.length > 50) {
                 errors.push('La clasificación debe tener un largo máximo de 50 caracteres');
             }
 
-            // Validar si existe tipo de maquina con la misma clasificacion
-            const [tipoMaquinaExists] = await pool.query("SELECT * FROM tipo_maquina WHERE clasificacion = ? AND id != ?", [clasificacion, idNumber]);
+            // Validar si existe tipo de maquina con la misma nombre
+            const [tipoMaquinaExists] = await pool.query("SELECT * FROM tipo_maquina WHERE nombre = ? AND id != ?", [nombre, idNumber]);
             if (tipoMaquinaExists.length > 0) {
                 errors.push('Ya existe un tipo de máquina con esa clasificación');
             }
 
-            updates.clasificacion = clasificacion;
+            updates.nombre = nombre;
         }
 
         if (descripcion !== undefined) {

@@ -3,7 +3,8 @@ import {
     uploadFileToS3,
     updateImageUrlInDb,
     handleError
-  } from './fileUpload.js';
+  } from '../utils/fileUpload.js';
+import { validateDate, validateFloat } from "../utils/validations.js";
 
 export const getMantencionesAllDetails = async (req, res) => {
     try {
@@ -31,7 +32,8 @@ export const getMantencionesAllDetails = async (req, res) => {
                 m.img_url,
                 m.cost_ser,
                 t.nombre AS 'taller',
-                em.nombre AS 'estado_mantencion'
+                em.nombre AS 'estado_mantencion',
+                tm.nombre AS 'tipo_mantencion'
             FROM mantencion m
             INNER JOIN bitacora b ON m.bitacora_id = b.id
             INNER JOIN compania c ON b.compania_id = c.id
@@ -40,6 +42,7 @@ export const getMantencionesAllDetails = async (req, res) => {
             INNER JOIN personal p ON cm.personal_id = p.id
             INNER JOIN taller t ON m.taller_id = t.id
             INNER JOIN estado_mantencion em ON m.estado_mantencion_id = em.id
+            INNER JOIN tipo_mantencion tm ON m.tipo_mantencion_id = tm.id
             WHERE m.isDeleted = 0 AND b.isDeleted = 0
         `);
 
@@ -94,8 +97,8 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
                 c.nombre AS 'bitacora.compania', -- Nombre de la compañia
                 CONCAT(p.rut) AS 'bitacora.conductor', -- RUT del conductor
                 b.direccion AS 'bitacora.direccion',
-                DATE_FORMAT(b.fh_salida, '%d-%m-%Y %H:%i') AS 'bitacora.h_salida',
-                DATE_FORMAT(b.fh_llegada, '%d-%m-%Y %H:%i') AS 'bitacora.h_llegada',
+                DATE_FORMAT(b.fh_salida, '%d-%m-%Y %H:%i') AS 'bitacora.fh_salida',
+                DATE_FORMAT(b.fh_llegada, '%d-%m-%Y %H:%i') AS 'bitacora.fh_llegada',
                 b.km_salida AS 'bitacora.km_salida',
                 b.km_llegada AS 'bitacora.km_llegada',
                 b.hmetro_salida AS 'bitacora.hmetro_salida',
@@ -110,16 +113,17 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
                 m.n_factura,
                 m.img_url,
                 m.cost_ser,
-                t.nombre AS 'taller',
-                em.nombre AS 'estado_mantencion'
+                t.razon_social AS 'taller',
+                em.nombre AS 'estado_mantencion',
+                tm.nombre AS 'tipo_mantencion',
             FROM mantencion m
             INNER JOIN bitacora b ON m.bitacora_id = b.id
             INNER JOIN compania c ON b.compania_id = c.id
             INNER JOIN maquina ma ON m.maquina_id = ma.id
-            INNER JOIN conductor_maquina cm ON b.conductor_id = cm.id
-            INNER JOIN personal p ON cm.personal_id = p.id
+            INNER JOIN personal p ON b.personal_id = p.id
             INNER JOIN taller t ON m.taller_id = t.id
             INNER JOIN estado_mantencion em ON m.estado_mantencion_id = em.id
+            INNER JOIN tipo_mantencion tm ON m.tipo_mantencion_id = tm.id
             WHERE m.isDeleted = 0 AND b.isDeleted = 0
         `;
 
@@ -127,7 +131,7 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
         const params = [];
 
         if (taller) {
-            query += ' AND t.nombre = ?';
+            query += ' AND t.razon_social = ?';
             params.push(taller);
         }
         if (estado_mantencion) {
@@ -157,11 +161,6 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
         // Ejecutar la consulta con los parámetros
         const [rows] = await pool.query(query, params);
 
-        // Si no se proporciona "page", devolver todos los datos sin paginación
-        if (!page) {
-            return res.json(rows); // Devuelve todos los registros sin paginación
-        }
-
         // Mapeo de resultados a la estructura deseada
         const result = rows.map(row => ({
             id: row.id,
@@ -170,8 +169,8 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
                 compania: row['bitacora.compania'],
                 conductor: row['bitacora.conductor'],
                 direccion: row['bitacora.direccion'],
-                h_salida: row['bitacora.h_salida'],
-                h_llegada: row['bitacora.h_llegada'],
+                fh_salida: row['bitacora.fh_salida'],
+                fh_llegada: row['bitacora.fh_llegada'],
                 km_salida: row['bitacora.km_salida'],
                 km_llegada: row['bitacora.km_llegada'],
                 hmetro_salida: row['bitacora.hmetro_salida'],
@@ -189,9 +188,10 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
             cost_ser: row.cost_ser,
             taller: row.taller,
             estado_mantencion: row.estado_mantencion,
+            tipo_mantencion	: row.tipo_mantencion
         }));
 
-        // Responder con los resultados paginados
+        // Responder con los resultados formateados
         res.json(result);
 
     } catch (error) {
@@ -202,6 +202,7 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
     }
 };
 
+// TODO: actualizar
 export const getMantencionAllDetailsById = async (req, res) => {
     const { id } = req.params;
 
@@ -229,8 +230,9 @@ export const getMantencionAllDetailsById = async (req, res) => {
                 m.n_factura,
                 m.img_url,
                 m.cost_ser,
-                t.nombre AS 'taller',
-                em.nombre AS 'estado_mantencion'
+                t.razon_social AS 'taller',
+                em.nombre AS 'estado_mantencion',
+                tm.nombre AS 'tipo_mantencion',
             FROM mantencion m
             INNER JOIN bitacora b ON m.bitacora_id = b.id
             INNER JOIN compania c ON b.compania_id = c.id
@@ -239,6 +241,7 @@ export const getMantencionAllDetailsById = async (req, res) => {
             INNER JOIN personal p ON cm.personal_id = p.id
             INNER JOIN taller t ON m.taller_id = t.id
             INNER JOIN estado_mantencion em ON m.estado_mantencion_id = em.id
+            INNER JOIN tipo_mantencion tm ON m.tipo_mantencion_id = tm.id
             WHERE m.isDeleted = 0 AND b.isDeleted = 0 AND m.id = ?
         `, [id]);
 
@@ -272,6 +275,7 @@ export const getMantencionAllDetailsById = async (req, res) => {
             cost_ser: row.cost_ser,
             taller: row.taller,
             estado_mantencion: row.estado_mantencion,
+            tipo_mantencion	: row.tipo_mantencion
         }));
 
         res.json(result);
@@ -286,7 +290,7 @@ export const getMantencionAllDetailsById = async (req, res) => {
 
 // Crear mantenciones con todo (bitacora incluida)
 export const createMantencionBitacora = async (req, res) => {
-    const {
+    let {
         bitacora,
         maquina_id,
         ord_trabajo,
@@ -294,14 +298,15 @@ export const createMantencionBitacora = async (req, res) => {
         cost_ser,
         taller_id,
         estado_mantencion_id,
+        tipo_mantencion_id,
         fec_inicio,
         fec_termino
     } = req.body;
 
     // Extraer los datos de la bitácora
-    const {
+    let {
         compania_id,
-        conductor_id,
+        personal_id,
         direccion,
         f_salida,
         h_salida,
@@ -320,6 +325,8 @@ export const createMantencionBitacora = async (req, res) => {
     const errors = []; // Arreglo para almacenar errores
 
     try {
+        ord_trabajo = String(ord_trabajo).trim();
+        
         // Concatenar fecha y hora para formatear como datetime
         let fh_salida = null;
         let fh_llegada = null;
@@ -333,13 +340,13 @@ export const createMantencionBitacora = async (req, res) => {
 
         // Validación de datos de la bitácora
         const companiaIdNumber = parseInt(compania_id);
-        const conductorIdNumber = parseInt(conductor_id);
+        const personalIdNumber = parseInt(personal_id);
         const maquinaIdNumber = parseInt(maquina_id);
         const claveIdNumber = parseInt(clave_id);
 
         if (
             isNaN(companiaIdNumber) ||
-            isNaN(conductorIdNumber) ||
+            isNaN(personalIdNumber) ||
             isNaN(maquinaIdNumber) ||
             isNaN(claveIdNumber) ||
             typeof direccion !== "string"
@@ -353,9 +360,9 @@ export const createMantencionBitacora = async (req, res) => {
             errors.push("Compañía no existe o está eliminada");
         }
 
-        const [conductorExists] = await pool.query("SELECT 1 FROM conductor_maquina WHERE id = ? AND isDeleted = 0", [conductorIdNumber]);
-        if (conductorExists.length === 0) {
-            errors.push("Conductor no existe o está eliminado");
+        const [personalExists] = await pool.query("SELECT 1 FROM personal WHERE id = ? AND isDeleted = 0", [personalIdNumber]);
+        if (personalExists.length === 0) {
+            errors.push("Personal no existe o está eliminado");
         }
 
         const [maquinaExists] = await pool.query("SELECT 1 FROM maquina WHERE id = ? AND isDeleted = 0", [maquinaIdNumber]);
@@ -368,35 +375,94 @@ export const createMantencionBitacora = async (req, res) => {
             errors.push("Clave no existe o está eliminada");
         }
 
-        // Validación de fecha y hora si están presentes
-        const fechaRegex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$/;
-        const horaRegex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
-
-        if (f_salida && h_salida && (!fechaRegex.test(f_salida) || !horaRegex.test(h_salida))) {
+        // Validación de fecha y hora usando la función validateDate
+        if (f_salida && h_salida && !validateDate(f_salida, h_salida)) {
             errors.push('El formato de la fecha o la hora de salida es inválido. Deben ser dd-mm-aaaa y HH:mm');
         }
 
-        if (f_llegada && h_llegada && (!fechaRegex.test(f_llegada) || !horaRegex.test(h_llegada))) {
+        if (f_llegada && h_llegada && !validateDate(f_llegada, h_llegada)) {
             errors.push('El formato de la fecha o la hora de llegada es inválido. Deben ser dd-mm-aaaa y HH:mm');
         }
 
-        // Validación de valores numéricos para los kilómetros y otros campos
-        const kmSalida = parseFloat(km_salida);
-        const kmLlegada = parseFloat(km_llegada);
-        const hmetroSalida = parseFloat(hmetro_salida);
-        const hmetroLlegada = parseFloat(hmetro_llegada);
-        const hbombaSalida = parseFloat(hbomba_salida);
-        const hbombaLlegada = parseFloat(hbomba_llegada);
+        // Validación de fec_inicio usando validateDate
+        let formattedFecInicio = null;
+        if (fec_inicio) {
+            if (!validateDate(fec_inicio)) {
+                errors.push("El formato de la fecha de inicio es inválido. Debe ser dd-mm-yyyy");
+            } else {
+                // Formatear la fecha si es válida
+                const dateParts = fec_inicio.split("-");
+                const [day, month, year] = dateParts.map(Number);
+                formattedFecInicio = `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+            }
+        }
 
-        if (
-            isNaN(kmSalida) || kmSalida < 0 ||
-            isNaN(kmLlegada) || kmLlegada < 0 ||
-            isNaN(hmetroSalida) || hmetroSalida < 0 ||
-            isNaN(hmetroLlegada) || hmetroLlegada < 0 ||
-            isNaN(hbombaSalida) || hbombaSalida < 0 ||
-            isNaN(hbombaLlegada) || hbombaLlegada < 0
-        ) {
-            errors.push("Los valores no pueden ser negativos");
+        // Validación de fec_termino usando validateDate
+        let formattedFecTermino = null;
+        if (fec_termino) {
+            if (!validateDate(fec_termino)) {
+                errors.push("El formato de la fecha de término es inválido. Debe ser dd-mm-yyyy");
+            } else {
+                // Formatear la fecha si es válida
+                const dateParts = fec_termino.split("-");
+                const [day, month, year] = dateParts.map(Number);
+                formattedFecTermino = `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+            }
+        }
+
+        // validar numeros flotantes (bitácora)
+        if(km_salida !== undefined){
+            const error = validateFloat(km_salida);
+            if (error) {
+                errors.push(`km_salida: ${error}`);
+            }
+        } else {
+            errors.push("km_salida es obligatorio");
+        }
+
+        if(km_llegada !== undefined){
+            const error = validateFloat(km_llegada);
+            if (error) {
+                errors.push(`km_llegada: ${error}`);
+            }
+        } else {
+            errors.push("km_llegada es obligatorio");
+        }
+
+        if(hmetro_salida !== undefined){
+            const error = validateFloat(hmetro_salida);
+            if (error) {
+                errors.push(`hmetro_salida: ${error}`);
+            }
+        } else {
+            errors.push("hmetro_salida es obligatorio");
+        }
+
+        if(hmetro_llegada !== undefined){
+            const error = validateFloat(hmetro_llegada);
+            if (error) {
+                errors.push(`hmetro_llegada: ${error}`);
+            }
+        } else {
+            errors.push("hmetro_llegada es obligatorio");
+        }
+
+        if(hbomba_salida !== undefined){
+            const error = validateFloat(hbomba_salida);
+            if (error) {
+                errors.push(`hbomba_salida: ${error}`);
+            }
+        } else {
+            errors.push("hbomba_salida es obligatorio");
+        }
+
+        if(hbomba_llegada !== undefined){
+            const error = validateFloat(hbomba_llegada);
+            if (error) {
+                errors.push(`hbomba_llegada: ${error}`);
+            }
+        } else {
+            errors.push("hbomba_llagada es obligatorio");
         }
 
         // Validaciones para mantención
@@ -410,28 +476,9 @@ export const createMantencionBitacora = async (req, res) => {
             errors.push("Estado de mantención no existe");
         }
 
-        // Validar y formatear fec_termino si está presente
-        let formattedFecTermino = null;
-        if (fec_termino) {
-            if (!fechaRegex.test(fec_termino)) {
-                errors.push("El formato de la fecha de término es inválido. Debe ser dd-mm-yyyy");
-            }
-
-            const dateParts = fec_termino.split("-");
-            const [day, month, year] = dateParts.map(Number);
-            formattedFecTermino = `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
-        }
-
-        // Validar y formatear fec_inicio si está presente
-        let formattedFecInicio = null;
-        if (fec_inicio) {
-            if (!fechaRegex.test(fec_inicio)) {
-                errors.push("El formato de la fecha de inicio es inválido. Debe ser dd-mm-yyyy");
-            }
-
-            const dateParts = fec_inicio.split("-");
-            const [day, month, year] = dateParts.map(Number);
-            formattedFecInicio = `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+        const [tipoMantencionExists] = await pool.query("SELECT 1 FROM tipo_mantencion WHERE id = ? AND isDeleted = 0", [tipo_mantencion_id]);
+        if (tipoMantencionExists.length === 0) {
+            errors.push("Tipo de mantención no existe");
         }
 
         // Validar el costo del servicio solo si existe el "n_factura"
@@ -459,7 +506,7 @@ export const createMantencionBitacora = async (req, res) => {
         // Inserción de la bitácora en la base de datos
         const [bitacoraResult] = await pool.query(
             `INSERT INTO bitacora (
-                compania_id, conductor_id, maquina_id, direccion,
+                compania_id, personal_id, maquina_id, direccion,
                 fh_salida, fh_llegada, clave_id, km_salida, km_llegada,
                 hmetro_salida, hmetro_llegada, hbomba_salida, hbomba_llegada, obs, isDeleted
             ) VALUES (
@@ -467,9 +514,9 @@ export const createMantencionBitacora = async (req, res) => {
                 STR_TO_DATE(?, "%d-%m-%Y %H:%i"), ?, ?, ?, ?, ?, ?, ?, ?, 0
             )`,
             [
-                companiaIdNumber, conductorIdNumber, maquinaIdNumber, direccion,
-                fh_salida, fh_llegada, claveIdNumber, kmSalida, kmLlegada,
-                hmetroSalida, hmetroLlegada, hbombaSalida, hbombaLlegada, obs || null
+                companiaIdNumber, personalIdNumber, maquinaIdNumber, direccion,
+                fh_salida, fh_llegada, claveIdNumber, km_salida, km_llegada,
+                hmetro_salida, hmetro_llegada, hbomba_salida, hbomba_llegada, obs || null
             ]
         );
 
@@ -479,11 +526,11 @@ export const createMantencionBitacora = async (req, res) => {
         const [mantencionResult] = await pool.query(
             `INSERT INTO mantencion (
                 bitacora_id, maquina_id, ord_trabajo, n_factura,
-                cost_ser, taller_id, estado_mantencion_id, fec_inicio, fec_termino, isDeleted
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+                cost_ser, taller_id, estado_mantencion_id, tipo_mantencion_id, fec_inicio, fec_termino, isDeleted
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
             [
                 bitacora_id, maquina_id, ord_trabajo, n_factura || null,
-                cost_ser || null, taller_id, estado_mantencion_id,
+                cost_ser || null, taller_id, estado_mantencion_id, tipo_mantencion_id,
                 formattedFecInicio, formattedFecTermino
             ]
         );
@@ -599,6 +646,7 @@ export const updateMantencion = async (req, res) => {
         cost_ser,
         taller_id,
         estado_mantencion_id,
+        tipo_mantencion_id,
         isDeleted,
         fec_inicio, // Nueva columna
         fec_termino
@@ -612,7 +660,8 @@ export const updateMantencion = async (req, res) => {
             { field: 'bitacora_id', table: 'bitacora' },
             { field: 'maquina_id', table: 'maquina' },
             { field: 'taller_id', table: 'taller' },
-            { field: 'estado_mantencion_id', table: 'estado_mantencion' }
+            { field: 'estado_mantencion_id', table: 'estado_mantencion' },
+            { field: 'tipo_mantencion_id', table: 'tipo_mantencion' }
         ];
 
         const updates = {};
@@ -736,6 +785,7 @@ export const updateMantencion = async (req, res) => {
 const value = "mantencion";
 const folder=value;
 const tableName=value;
+const columnName = "img_url";
 
 export const updateImage = async (req, res) => {
     const { id } = req.params;
@@ -748,7 +798,7 @@ export const updateImage = async (req, res) => {
     try {
         const data = await uploadFileToS3(file, folder);
         const newUrl = data.Location;
-        await updateImageUrlInDb(id, newUrl, tableName); // Pasa el nombre de la tabla
+        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
         res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
     } catch (error) {
         handleError(res, error, "Error al actualizar la imagen");

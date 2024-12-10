@@ -3,8 +3,10 @@ import {
     handleError,
     updateImageUrlInDb,
     uploadFileToS3
-} from './fileUpload.js';
-import { validateRUT } from '../utils/validations.js';
+} from '../utils/fileUpload.js';
+import { validateRUT, validateDate } from '../utils/validations.js';
+
+// TODO: implementacion de "imgLicencia"
 
 // Devuelve todos los personales
 export const getPersonal = async (req, res) => {
@@ -67,7 +69,7 @@ export const getPersonalWithDetailsPage = async (req, res) => {
                    p.img_url, p.obs, p.isDeleted,
                    rp.nombre AS rol_personal,
                    c.nombre AS compania,
-                   p.compania_id, p.rol_personal_id, p.ven_licencia,
+                   p.compania_id, p.rol_personal_id, p.ven_licencia, p.ultima_fec_servicio,
                    TIMESTAMPDIFF(MONTH, p.fec_ingreso, CURDATE()) AS antiguedad,
                    GROUP_CONCAT(DISTINCT m.id) AS maquinas_ids
             FROM personal p
@@ -151,7 +153,7 @@ export const getPersonalbyID = async (req, res) => {
                    p.isDeleted,
                    rp.nombre AS rol_personal, 
                    c.nombre AS compania,
-                   p.compania_id, p.rol_personal_id, p.ven_licencia,
+                   p.compania_id, p.rol_personal_id, p.ven_licencia, p.ultima_fec_servicio,
                    TIMESTAMPDIFF(MONTH, p.fec_ingreso, CURDATE()) AS antiguedad,
                    GROUP_CONCAT(DISTINCT m.id) AS maquinas_ids
             FROM personal p
@@ -198,7 +200,9 @@ export const createPersonal = async (req, res) => {
         img_url = '',
         obs = '',
         fec_ingreso,
-        ven_licencia // campo opcional
+        ven_licencia, // campo opcional
+        ultima_fec_servicio_fecha, // campo opcional (DATETIME) FECHA
+        ultima_fec_servicio_hora, // campo opcional (DATETIME) HORA
     } = req.body;
 
     const errors = []; // Array para almacenar los errores
@@ -210,6 +214,24 @@ export const createPersonal = async (req, res) => {
         rut = String(rut).trim();
         nombre = String(nombre).trim();
         apellido = String(apellido).trim();
+
+        // declarar variable para almacenar la fecha y hora
+        let ultima_fec_servicio = null;
+        
+        if (ultima_fec_servicio_fecha && ultima_fec_servicio_hora) {
+            
+            // Validar que ambos campos sean strings
+            if (typeof ultima_fec_servicio_fecha !== 'string' || typeof ultima_fec_servicio_hora !== 'string') {
+                errors.push('Tipo de datos inválido para ultima_fec_servicio');
+            }
+
+            // Validar que ambos campos tengan el formato correcto
+            if (!validateDate(ultima_fec_servicio_f) || !validateDate(ultima_fec_servicio_h)) {
+                errors.push('El formato de la fecha y hora de "ultima_fec_servicio" es inválido (dd-MM-yyyy HH:mm)');
+            }
+
+            ultima_fec_servicio = `${ultima_fec_servicio_fecha} ${ultima_fec_servicio_hora}`;
+        }
 
         // Validación de tipo de datos
         if (
@@ -284,7 +306,7 @@ export const createPersonal = async (req, res) => {
 
         // Inserción en la base de datos
         const [rows] = await pool.query(
-            'INSERT INTO personal (rol_personal_id, rut, nombre, apellido, compania_id, fec_nac, img_url, obs, fec_ingreso, isDeleted, ven_licencia) VALUES (?, ?, ?, ?, ?, STR_TO_DATE(?, "%d-%m-%Y"), ?, ?, STR_TO_DATE(?, "%d-%m-%Y"), 0, STR_TO_DATE(?, "%d-%m-%Y"))',
+            'INSERT INTO personal (rol_personal_id, rut, nombre, apellido, compania_id, fec_nac, img_url, obs, fec_ingreso, isDeleted, ven_licencia, ultima_fec_servicio) VALUES (?, ?, ?, ?, ?, STR_TO_DATE(?, "%d-%m-%Y"), ?, ?, STR_TO_DATE(?, "%d-%m-%Y"), 0, STR_TO_DATE(?, "%d-%m-%Y"), STR_TO_DATE(?, "%d-%m-%Y %H:%i"))',
             [
                 rolPersonalIdNumber,
                 rut,
@@ -295,7 +317,8 @@ export const createPersonal = async (req, res) => {
                 img_url,
                 obs,
                 fec_ingreso || null, // Inserta NULL si fec_ingreso no se especifica
-                ven_licencia || null // Inserta NULL si ven_licencia no se especifica
+                ven_licencia || null, // Inserta NULL si ven_licencia no se especifica
+                ultima_fec_servicio
             ]
         );
 
@@ -310,7 +333,8 @@ export const createPersonal = async (req, res) => {
             img_url,
             obs,
             fec_ingreso,
-            ven_licencia
+            ven_licencia,
+            ultima_fec_servicio
         });
     } catch (error) {
         console.error('error: ', error);
@@ -359,7 +383,9 @@ export const updatePersonal = async (req, res) => {
         obs,
         isDeleted,
         fec_ingreso,
-        ven_licencia // campo opcional      
+        ven_licencia, // campo opcional 
+        ultima_fec_servicio_fecha, // campo opcional (DATETIME) FECHA
+        ultima_fec_servicio_hora, // campo opcional (DATETIME) HORA     
     } = req.body;
 
     let errors = [];
@@ -435,6 +461,7 @@ export const updatePersonal = async (req, res) => {
             updates.compania_id = companiaIdNumber;
         }
 
+        // TODO: Usar "validateDate" para validar las fechas
         if (fec_nac !== undefined) {
             if (typeof fec_nac !== 'string') {
                 errors.push("Tipo de dato inválido para 'fec_nac'");
@@ -492,6 +519,20 @@ export const updatePersonal = async (req, res) => {
             updates.isDeleted = isDeleted;
         }
 
+        if (ultima_fec_servicio_fecha !== undefined && ultima_fec_servicio_hora !== undefined) {
+            // Validar que ambos campos sean strings
+            if (typeof ultima_fec_servicio_fecha !== 'string' || typeof ultima_fec_servicio_hora !== 'string') {
+                errors.push('Tipo de datos inválido para ultima_fec_servicio');
+            }
+
+            // Validar que ambos campos tengan el formato correcto
+            if (!validateDate(ultima_fec_servicio_fecha) || !validateDate(ultima_fec_servicio_hora)) {
+                errors.push('El formato de la fecha y hora de "ultima_fec_servicio" es inválido (dd-MM-yyyy HH:mm)');
+            }
+
+            updates.ultima_fec_servicio = `${ultima_fec_servicio_fecha} ${ultima_fec_servicio_hora}`;
+        }
+
         if (errors.length > 0) {
             return res.status(400).json({ errors }); // Devuelve los errores
         }
@@ -499,8 +540,14 @@ export const updatePersonal = async (req, res) => {
         const setClause = Object.keys(updates)
             .map((key) => {
                 if (key === 'fec_nac' || key === 'fec_ingreso' || key === 'ven_licencia') {
+                    // Para estos campos, usa STR_TO_DATE con el formato de fecha sin hora
                     return `${key} = STR_TO_DATE(?, '%d-%m-%Y')`;
                 }
+                if (key === 'ultima_fec_servicio') {
+                    // Para el campo 'ultima_fec_servicio', usa STR_TO_DATE con el formato de fecha y hora
+                    return `${key} = STR_TO_DATE(?, '%d-%m-%Y %H:%i')`;
+                }
+                // Para otros campos, usa el valor directo
                 return `${key} = ?`;
             })
             .join(', ');
@@ -525,18 +572,11 @@ export const updatePersonal = async (req, res) => {
 const value = "personal";
 const folder=value;
 const tableName=value;
+const columnName = "img_url";
 
 export const updateImage = async (req, res) => {
     const { id } = req.params;
     const file = req.file;
-
-    // console.log({
-    //     id: id,
-    //     file: file,
-    //     folder: folder,
-    //     tableName: tableName
-    // });
-
 
     if (!file) {
         return res.status(400).json({ message: "Falta el archivo." });
@@ -545,7 +585,7 @@ export const updateImage = async (req, res) => {
     try {
         const data = await uploadFileToS3(file, folder);
         const newUrl = data.Location;
-        await updateImageUrlInDb(id, newUrl, tableName); // Pasa el nombre de la tabla
+        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
         res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
     } catch (error) {
         handleError(res, error, "Error al actualizar la imagen");

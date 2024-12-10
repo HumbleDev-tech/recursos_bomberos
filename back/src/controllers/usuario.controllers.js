@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { SALT_ROUNDS, SECRET_JWT_KEY, HOST } from "../config.js";
 import { pool } from "../db.js";
-import { sendEmail } from './mailer.js';
+import { sendEmail } from '../utils/mailer.js';
 
 // Obtener todos los usuarios
 export const getUsuarios = async (req, res) => {

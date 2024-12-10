@@ -66,16 +66,16 @@ export const getClaveById = async (req, res) => {
 
 // Crear nueva clave
 export const createClave = async (req, res) => {
-    let { codigo, descripcion } = req.body;
+    let { nombre, descripcion } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
-        codigo = String(codigo).trim();
+        nombre = String(nombre).trim();
         descripcion = String(descripcion).trim();
 
         // Validar tipos de datos
-        if (typeof codigo !== 'string') {
-            errors.push('Tipo de dato inválido para "codigo"');
+        if (typeof nombre !== 'string') {
+            errors.push('Tipo de dato inválido para "nombre"');
         }
 
         if (typeof descripcion !== 'string') {
@@ -83,7 +83,7 @@ export const createClave = async (req, res) => {
         }
 
         // Validar largo de campos
-        if (codigo && codigo.length > 10) {
+        if (nombre && nombre.length > 10) {
             errors.push('El largo del código no debe exceder 10 caracteres');
         }
         if (descripcion && descripcion.length > 100) {
@@ -91,8 +91,8 @@ export const createClave = async (req, res) => {
         }
 
         // Validar si ya existe una clave con el mismo código
-        if (codigo) {
-            const [claveExists] = await pool.query('SELECT * FROM clave WHERE codigo = ? AND isDeleted = 0', [codigo]);
+        if (nombre) {
+            const [claveExists] = await pool.query('SELECT * FROM clave WHERE nombre = ? AND isDeleted = 0', [nombre]);
             if (claveExists.length > 0) {
                 errors.push('Ya existe una clave con el mismo código');
             }
@@ -104,8 +104,8 @@ export const createClave = async (req, res) => {
         }
 
         // Insertar nueva clave
-        const [rows] = await pool.query("INSERT INTO clave (codigo, descripcion, isDeleted) VALUES (?, ?, 0)", [codigo, descripcion]);
-        res.status(201).json({ id: rows.insertId, codigo, descripcion });
+        const [rows] = await pool.query("INSERT INTO clave (nombre, descripcion, isDeleted) VALUES (?, ?, 0)", [nombre, descripcion]);
+        res.status(201).json({ id: rows.insertId, nombre, descripcion });
     } catch (error) {
         errors.push(error.message);
         return res.status(500).json({ message: 'Error interno del servidor', errors });
@@ -132,7 +132,7 @@ export const deleteClave = async (req, res) => {
 // Actualizar clave
 export const updateClave = async (req, res) => {
     const { id } = req.params;
-    let { codigo, descripcion, isDeleted } = req.body;
+    let { nombre, descripcion, isDeleted } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
@@ -143,27 +143,27 @@ export const updateClave = async (req, res) => {
 
         // Validaciones
         const updates = {};
-        if (codigo !== undefined) {
-            codigo = String(codigo).trim();
+        if (nombre !== undefined) {
+            nombre = String(nombre).trim();
             // Validar tipo de dato
-            if (typeof codigo !== "string") {
-                errors.push("Tipo de dato inválido para 'codigo'");
+            if (typeof nombre !== "string") {
+                errors.push("Tipo de dato inválido para 'nombre'");
             }
 
             // Validar largo de campo
-            if (codigo && codigo.length > 10) {
-                errors.push("Largo de campo excedido para 'codigo'");
+            if (nombre && nombre.length > 10) {
+                errors.push("Largo de campo excedido para 'nombre'");
             }
 
             // Validar si ya existe clave con el mismo código
-            if (codigo) {
-                const [claveExists] = await pool.query('SELECT * FROM clave WHERE codigo = ? AND isDeleted = 0', [codigo]);
+            if (nombre) {
+                const [claveExists] = await pool.query('SELECT * FROM clave WHERE nombre = ? AND isDeleted = 0', [nombre]);
                 if (claveExists.length > 0) {
                     errors.push("Ya existe una clave con el mismo código");
                 }
             }
 
-            updates.codigo = codigo;
+            updates.nombre = nombre;
         }
 
         if (descripcion !== undefined) {

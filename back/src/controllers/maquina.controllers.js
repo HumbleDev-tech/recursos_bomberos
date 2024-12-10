@@ -4,7 +4,9 @@ import {
   uploadFileToS3,
   updateImageUrlInDb,
   handleError
-} from './fileUpload.js';
+} from '../utils/fileUpload.js';
+import { validateType } from '../utils/validations.js';
+import e from "express";
 
 // Obtener todas las máquinas
 export const getMaquinas = async (req, res) => {
@@ -32,6 +34,7 @@ export const getMaquinasDetails = async (req, res) => {
         m.hmetro_motor AS hmetro_motor,
         m.kmetraje AS kmetraje,
         m.num_motor AS num_motor,
+        m.peso_kg AS peso_kg,
         DATE_FORMAT(m.ven_patente, '%d-%m-%Y') AS ven_patente,
         m.cost_rev_tec AS cost_rev_tec,
         DATE_FORMAT(m.ven_rev_tec, '%d-%m-%Y') AS ven_rev_tec,
@@ -173,6 +176,7 @@ export const getMaquinaById = async (req, res) => {
         DATE_FORMAT(m.ven_rev_tec, '%d-%m-%Y') AS ven_rev_tec,
         m.cost_seg_auto AS cost_seg_auto,
         DATE_FORMAT(m.ven_seg_auto, '%d-%m-%Y') AS ven_seg_auto,
+        m.peso_kg AS peso_kg,
         tm.clasificacion AS tipo_maquina,
         c.id AS compania_id,
         c.nombre AS compania,
@@ -194,7 +198,7 @@ export const getMaquinaById = async (req, res) => {
 
 // Crear nueva máquina
 export const createMaquina = async (req, res) => {
-  const {
+  let {
     tipo_maquina_id,
     compania_id,
     codigo,
@@ -212,44 +216,77 @@ export const createMaquina = async (req, res) => {
     ven_rev_tec,
     cost_seg_auto,
     ven_seg_auto,
+    peso_kg,
   } = req.body;
 
   const errors = []; // Arreglo para almacenar errores
 
   try {
     // Validaciones de tipo de datos
-    if (
-      isNaN(parseInt(tipo_maquina_id)) ||
-      isNaN(parseInt(compania_id)) ||
-      typeof codigo !== 'string' ||
-      typeof patente !== 'string' ||
-      typeof num_chasis !== 'string' ||
-      typeof vin !== 'string' ||
-      isNaN(parseFloat(cost_rev_tec)) ||
-      isNaN(parseFloat(cost_seg_auto))
-    ) {
-      errors.push({ message: 'Tipo de datos inválido' });
+    if (isNaN(parseInt(tipo_maquina_id))) {
+      errors.push({ field: 'tipo_maquina_id', message: 'El campo "tipo_maquina_id" debe ser un número entero.' });
+    }
+    if (isNaN(parseInt(compania_id))) {
+      errors.push({ field: 'compania_id', message: 'El campo "compania_id" debe ser un número entero.' });
+    }
+    if (typeof codigo !== 'string') {
+      errors.push({ field: 'codigo', message: 'El campo "codigo" debe ser una cadena de texto.' });
+    }
+    if (typeof patente !== 'string') {
+      errors.push({ field: 'patente', message: 'El campo "patente" debe ser una cadena de texto.' });
+    }
+    if (typeof num_chasis !== 'string') {
+      errors.push({ field: 'num_chasis', message: 'El campo "num_chasis" debe ser una cadena de texto.' });
+    }
+    if (typeof vin !== 'string') {
+      errors.push({ field: 'vin', message: 'El campo "vin" debe ser una cadena de texto.' });
+    }
+    if (isNaN(parseFloat(cost_rev_tec))) {
+      errors.push({ field: 'cost_rev_tec', message: 'El campo "cost_rev_tec" debe ser un número decimal.' });
+    }
+    if (isNaN(parseFloat(cost_seg_auto))) {
+      errors.push({ field: 'cost_seg_auto', message: 'El campo "cost_seg_auto" debe ser un número decimal.' });
+    }
+    if (isNaN(parseInt(peso_kg))) {
+      errors.push({ field: 'peso_kg', message: 'El campo "peso_kg" debe ser un número entero.' });
     }
 
+    
     // Validación de llaves foráneas
     const [tipoMaquina] = await pool.query("SELECT * FROM tipo_maquina WHERE id = ? AND isDeleted = 0", [tipo_maquina_id]);
-    if (tipoMaquina.length === 0) errors.push({ message: 'Tipo de máquina no existe' });
-
+    if (tipoMaquina.length === 0) {
+      errors.push({ field: 'tipo_maquina_id', message: 'El tipo de máquina con el ID proporcionado no existe o está eliminado.' });
+    }
+    
     const [compania] = await pool.query("SELECT * FROM compania WHERE id = ? AND isDeleted = 0", [compania_id]);
-    if (compania.length === 0) errors.push({ message: 'Compañía no existe' });
-
+    if (compania.length === 0) {
+      errors.push({ field: 'compania_id', message: 'La compañía con el ID proporcionado no existe o está eliminada.' });
+    }
+    
     const [procedencia] = await pool.query("SELECT * FROM procedencia WHERE id = ? AND isDeleted = 0", [procedencia_id]);
-    if (procedencia.length === 0) errors.push({ message: 'Procedencia no existe' });
-
+    if (procedencia.length === 0) {
+      errors.push({ field: 'procedencia_id', message: 'La procedencia con el ID proporcionado no existe o está eliminada.' });
+    }
+    
     // Validación de fechas
     const fechaRegex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$/;
-    const fechas = [ven_patente, ven_rev_tec, ven_seg_auto];
-    for (const fecha of fechas) {
-      if (fecha && !fechaRegex.test(fecha)) {
-        errors.push({ message: 'Formato de fecha inválido. Debe ser dd-mm-aaaa' });
+    const fechas = [
+      { field: 'ven_patente', value: ven_patente },
+      { field: 'ven_rev_tec', value: ven_rev_tec },
+      { field: 'ven_seg_auto', value: ven_seg_auto }
+    ];
+    
+    for (const { field, value } of fechas) {
+      if (value && !fechaRegex.test(value)) {
+        errors.push({ field, message: `El formato de fecha en el campo ${field} es inválido. Debe ser dd-mm-aaaa.` });
       }
     }
-
+    
+    const [patenteExists] = await pool.query("SELECT * FROM maquina WHERE patente = ? AND isDeleted = 0", [patente]);
+    if (patenteExists.length > 0) {
+      errors.push({ field: 'patente', message: 'Ya existe una máquina con la patente proporcionada.' });
+    }
+    
     // Si hay errores, devolverlos antes de continuar
     if (errors.length > 0) {
       return res.status(400).json({ errors });
@@ -257,7 +294,7 @@ export const createMaquina = async (req, res) => {
 
     // Inserción en la base de datos
     const [rows] = await pool.query(
-      "INSERT INTO maquina (tipo_maquina_id, compania_id, codigo, patente, num_chasis, vin, bomba, hmetro_bomba, hmetro_motor, kmetraje, num_motor, ven_patente, procedencia_id, cost_rev_tec, ven_rev_tec, cost_seg_auto, ven_seg_auto, isDeleted, img_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, STR_TO_DATE(?, '%d-%m-%Y'), ?, ?, STR_TO_DATE(?, '%d-%m-%Y'), ?, STR_TO_DATE(?, '%d-%m-%Y'), 0, '')",
+      "INSERT INTO maquina (tipo_maquina_id, compania_id, codigo, patente, num_chasis, vin, bomba, hmetro_bomba, hmetro_motor, kmetraje, num_motor, ven_patente, procedencia_id, cost_rev_tec, ven_rev_tec, cost_seg_auto, ven_seg_auto, isDeleted, peso_kg, img_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, STR_TO_DATE(?, '%d-%m-%Y'), ?, ?, STR_TO_DATE(?, '%d-%m-%Y'), ?, STR_TO_DATE(?, '%d-%m-%Y'), 0, ?, NULL)",
       [
         tipo_maquina_id,
         compania_id,
@@ -276,6 +313,7 @@ export const createMaquina = async (req, res) => {
         ven_rev_tec,
         cost_seg_auto,
         ven_seg_auto,
+        peso_kg
       ]
     );
 
@@ -301,7 +339,7 @@ export const deleteMaquina = async (req, res) => {
 // Actualizar máquina
 export const updateMaquina = async (req, res) => {
   const { id } = req.params;
-  const {
+  let {
     tipo_maquina_id,
     compania_id,
     codigo,
@@ -320,6 +358,7 @@ export const updateMaquina = async (req, res) => {
     cost_seg_auto,
     ven_seg_auto,
     disponible,
+    peso_kg,
     isDeleted,
   } = req.body;
 
@@ -338,7 +377,12 @@ export const updateMaquina = async (req, res) => {
     if (tipo_maquina_id !== undefined) {
       if (isNaN(parseInt(tipo_maquina_id))) {
         errors.push("Tipo de máquina inválido");
-      } else {
+      } 
+      const [tipoMaquina] = await pool.query("SELECT * FROM tipo_maquina WHERE id = ? AND isDeleted = 0", [tipo_maquina_id]);
+      if (tipoMaquina.length === 0) {
+        errors.push("El tipo de máquina con el ID proporcionado no existe o está eliminado.");
+      }
+      else {
         updates.tipo_maquina_id = tipo_maquina_id;
       }
     }
@@ -346,6 +390,10 @@ export const updateMaquina = async (req, res) => {
     if (compania_id !== undefined) {
       if (isNaN(parseInt(compania_id))) {
         errors.push("Compañía inválida");
+      }
+      const [compania] = await pool.query("SELECT * FROM compania WHERE id = ? AND isDeleted = 0", [compania_id]);
+      if (compania.length === 0) {
+        errors.push("La compañía con el ID proporcionado no existe o está eliminada.");
       } else {
         updates.compania_id = compania_id;
       }
@@ -362,6 +410,10 @@ export const updateMaquina = async (req, res) => {
     if (patente !== undefined) {
       if (typeof patente !== 'string') {
         errors.push("Patente inválida");
+      } 
+      const [patenteExists] = await pool.query("SELECT * FROM maquina WHERE patente = ? AND isDeleted = 0", [patente]);
+      if (patenteExists.length > 0) {
+        errors.push("Ya existe una máquina con la patente proporcionada.");
       } else {
         updates.patente = patente;
       }
@@ -423,6 +475,7 @@ export const updateMaquina = async (req, res) => {
       }
     }
 
+    // TODO: Validar fechas
     if (ven_patente !== undefined) {
       const fechaRegex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$/;
       if (!fechaRegex.test(ven_patente)) {
@@ -435,6 +488,10 @@ export const updateMaquina = async (req, res) => {
     if (procedencia_id !== undefined) {
       if (isNaN(parseInt(procedencia_id))) {
         errors.push("Procedencia inválida");
+      }
+      const [procedencia] = await pool.query("SELECT * FROM procedencia WHERE id = ? AND isDeleted = 0", [procedencia_id]);
+      if (procedencia.length === 0) {
+        errors.push("La procedencia con el ID proporcionado no existe o está eliminada.");
       } else {
         updates.procedencia_id = procedencia_id;
       }
@@ -474,7 +531,6 @@ export const updateMaquina = async (req, res) => {
       }
     }
 
-    // Validación y actualización de isDeleted
     if (isDeleted !== undefined) {
       if (isDeleted !== 0 && isDeleted !== 1) {
         errors.push("Valor inválido para 'isDeleted'. Debe ser 0 o 1.");
@@ -488,6 +544,14 @@ export const updateMaquina = async (req, res) => {
         errors.push("Valor inválido para 'disponible'. Debe ser 0 o 1.");
       } else {
         updates.disponible = disponible;
+      }
+    }
+
+    if (peso_kg !== undefined) {
+      if (isNaN(parseInt(peso_kg))) {
+        errors.push("Peso en kg inválido");
+      } else {
+        updates.peso_kg = peso_kg;
       }
     }
 
@@ -522,18 +586,11 @@ export const updateMaquina = async (req, res) => {
 const value = "maquina";
 const folder=value;
 const tableName=value;
+const columnName = "img_url";
 
 export const updateImage = async (req, res) => {
     const { id } = req.params;
     const file = req.file;
-
-    // console.log({
-    //     id: id,
-    //     file: file,
-    //     folder: folder,
-    //     tableName: tableName
-    // });
-
 
     if (!file) {
         return res.status(400).json({ message: "Falta el archivo." });
@@ -542,7 +599,7 @@ export const updateImage = async (req, res) => {
     try {
         const data = await uploadFileToS3(file, folder);
         const newUrl = data.Location;
-        await updateImageUrlInDb(id, newUrl, tableName); // Pasa el nombre de la tabla
+        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
         res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
     } catch (error) {
         handleError(res, error, "Error al actualizar la imagen");
