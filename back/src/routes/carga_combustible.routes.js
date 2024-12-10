@@ -1,9 +1,10 @@
 import { Router } from "express";
 import {
     // getCargasCombustible,
-    getCargasCombustiblePage,
+    // getCargasCombustiblePage,
     getCargaCombustibleByID,
     // createCargaCombustible,
+    getCargaCombustibleDetailsSearch,
     createCargaCombustibleBitacora,
     downCargaCombustible,
     updateCargaCombustible,
@@ -21,7 +22,7 @@ const router = Router();
 const base_route = '/carga_combustible';
 
 // router.get(base_route, getCargasCombustible);
-router.get(base_route, checkRole(['TELECOM']), getCargasCombustiblePage); // paginado
+router.get(base_route, checkRole(['TELECOM']), getCargaCombustibleDetailsSearch); // paginado
 // http://{url}/api/carga_combustible
 // QueryParams:
 // page:              1

@@ -91,13 +91,17 @@ export const getSubdivision = async (req, res) => {
 
 // Crear una nueva subdivisión
 export const createSubdivision = async (req, res) => {
-    const { division_id, nombre } = req.body;
+    let { 
+        division_id, 
+        nombre 
+    } = req.body;
     let errors = [];
 
     try {
+        nombre = nombre.trim();
         // Validación de datos
-        if (typeof nombre !== "string" || typeof division_id !== "number") {
-            errors.push("Tipo de datos inválido para 'nombre' o 'division_id'");
+        if (typeof nombre !== "string") {
+            errors.push("Tipo de datos inválido para 'nombre'");
         }
 
         // validacion de longitud de 'nombre'
@@ -105,8 +109,13 @@ export const createSubdivision = async (req, res) => {
             errors.push("Campo 'nombre' no debe estar vacío");
         }
 
-        if (nombre.length > 50) {
-            errors.push("Longitud de 'nombre' no debe exceder 50 caracteres");
+        if (nombre.length > 45) {
+            errors.push("Longitud de 'nombre' no debe exceder 45 caracteres");
+        }
+
+        const [subdivisionExists] = await pool.query("SELECT 1 FROM subdivision WHERE nombre = ? AND isDeleted = 0", [nombre]);
+        if (subdivisionExists.length > 0) {
+            errors.push("Ya existe una subdivisión con el mismo nombre");
         }
 
         // Validación de existencia de la división
@@ -160,7 +169,12 @@ export const deleteSubdivision = async (req, res) => {
 // Actualizar una subdivisión
 export const updateSubdivision = async (req, res) => {
     const { id } = req.params;
-    const { division_id, nombre, isDeleted } = req.body;
+    let { 
+        division_id, 
+        nombre, 
+        isDeleted 
+    } = req.body;
+
     const idNumber = parseInt(id);
     let errors = [];
 
@@ -183,6 +197,7 @@ export const updateSubdivision = async (req, res) => {
 
         // Validación de 'nombre'
         if (nombre !== undefined) {
+            nombre = nombre.trim();
             if (typeof nombre !== "string") {
                 errors.push("Tipo de dato inválido para 'nombre'");
             }
@@ -191,10 +206,15 @@ export const updateSubdivision = async (req, res) => {
                 errors.push("Campo 'nombre' no debe estar vacío");
             }
 
-            if (nombre.length > 50) {
-                errors.push("Longitud de 'nombre' no debe exceder 50 caracteres");
+            if (nombre.length > 45) {
+                errors.push("Longitud de 'nombre' no debe exceder 45 caracteres");
             }
 
+            const [subdivisionExists] = await pool.query("SELECT 1 FROM subdivision WHERE nombre = ? AND id != ? AND isDeleted = 0", [nombre, idNumber]);
+            if (subdivisionExists.length > 0) {
+                errors.push("Ya existe una subdivisión con el mismo nombre");
+            }
+            
             if (errors.length === 0) {
                 updates.nombre = nombre;
             }

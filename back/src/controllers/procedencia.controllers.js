@@ -73,18 +73,20 @@ export const getProcedenciaById = async (req, res) => {
 
 // Crear una nueva procedencia
 export const createProcedencia = async (req, res) => {
-    const { nombre } = req.body;
+    let { nombre } = req.body;
     let errors = [];
 
     try {
+        nombre = nombre.trim();
+
         // Validación de datos
-        if (typeof nombre !== 'string' || nombre.trim() === '') {
+        if (typeof nombre !== 'string') {
             errors.push('Nombre es un campo obligatorio y debe ser una cadena válida');
         }
 
         // Validar longitud de nombre
-        if (nombre.length > 50) {
-            errors.push('Nombre no puede tener más de 50 caracteres');
+        if (nombre.length > 30) {
+            errors.push('Nombre no puede tener más de 30 caracteres');
         }
 
         // Validar si ya existe la procedencia
@@ -131,7 +133,7 @@ export const deleteProcedencia = async (req, res) => {
 // Actualizar procedencia
 export const updateProcedencia = async (req, res) => {
     const { id } = req.params;
-    const { nombre, isDeleted } = req.body;
+    let { nombre, isDeleted } = req.body;
     let errors = [];
 
     try {
@@ -143,14 +145,15 @@ export const updateProcedencia = async (req, res) => {
         // Validaciones
         const updates = {};
         if (nombre !== undefined) {
+            nombre = nombre.trim();
             // Validar nombre
-            if (typeof nombre !== 'string' || nombre.trim() === '') {
+            if (typeof nombre !== 'string') {
                 errors.push('Nombre es un campo obligatorio y debe ser una cadena válida');
             }
 
             // Validar longitud de nombre
-            if (nombre.length > 50) {
-                errors.push('Nombre no puede tener más de 50 caracteres');
+            if (nombre.length > 30) {
+                errors.push('Nombre no puede tener más de 30 caracteres');
             }
 
             // Validar si ya existe la procedencia

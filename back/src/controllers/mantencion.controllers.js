@@ -115,7 +115,7 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
                 m.cost_ser,
                 t.razon_social AS 'taller',
                 em.nombre AS 'estado_mantencion',
-                tm.nombre AS 'tipo_mantencion',
+                tm.nombre AS 'tipo_mantencion'
             FROM mantencion m
             INNER JOIN bitacora b ON m.bitacora_id = b.id
             INNER JOIN compania c ON b.compania_id = c.id
@@ -164,21 +164,19 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
         // Mapeo de resultados a la estructura deseada
         const result = rows.map(row => ({
             id: row.id,
-            bitacora: {
-                id: row['bitacora.id'],
-                compania: row['bitacora.compania'],
-                conductor: row['bitacora.conductor'],
-                direccion: row['bitacora.direccion'],
-                fh_salida: row['bitacora.fh_salida'],
-                fh_llegada: row['bitacora.fh_llegada'],
-                km_salida: row['bitacora.km_salida'],
-                km_llegada: row['bitacora.km_llegada'],
-                hmetro_salida: row['bitacora.hmetro_salida'],
-                hmetro_llegada: row['bitacora.hmetro_llegada'],
-                hbomba_salida: row['bitacora.hbomba_salida'],
-                hbomba_llegada: row['bitacora.hbomba_llegada'],
-                obs: row['bitacora.obs'],
-            },
+            'bitacora.id': row['bitacora.id'],
+            'bitacora.compania': row['bitacora.compania'],
+            'bitacora.conductor': row['bitacora.conductor'],
+            'bitacora.direccion': row['bitacora.direccion'],
+            'bitacora.fh_salida': row['bitacora.fh_salida'],
+            'bitacora.fh_llegada': row['bitacora.fh_llegada'],
+            'bitacora.km_salida': row['bitacora.km_salida'],
+            'bitacora.km_llegada': row['bitacora.km_llegada'],
+            'bitacora.hmetro_salida': row['bitacora.hmetro_salida'],
+            'bitacora.hmetro_llegada': row['bitacora.hmetro_llegada'],
+            'bitacora.hbomba_salida': row['bitacora.hbomba_salida'],
+            'bitacora.hbomba_llegada': row['bitacora.hbomba_llegada'],
+            'bitacora.obs': row['bitacora.obs'],
             patente: row.patente,
             fec_inicio: row.fec_inicio,
             fec_termino: row.fec_termino,
@@ -188,13 +186,14 @@ export const getMantencionesAllDetailsSearch = async (req, res) => {
             cost_ser: row.cost_ser,
             taller: row.taller,
             estado_mantencion: row.estado_mantencion,
-            tipo_mantencion	: row.tipo_mantencion
-        }));
+            tipo_mantencion: row.tipo_mantencion
+        }));        
 
         // Responder con los resultados formateados
         res.json(result);
 
     } catch (error) {
+        console.error('Error: ', error);
         return res.status(500).json({
             message: "Error interno del servidor",
             error: error.message,
@@ -287,40 +286,34 @@ export const getMantencionAllDetailsById = async (req, res) => {
     }
 };
 
-
 // Crear mantenciones con todo (bitacora incluida)
 export const createMantencionBitacora = async (req, res) => {
     let {
-        bitacora,
+        "bitacora.compania_id": compania_id,
+        "bitacora.conductor_id": personal_id,
+        "bitacora.direccion": direccion,
+        "bitacora.f_salida": f_salida,
+        "bitacora.h_salida": h_salida,
+        "bitacora.f_llegada": f_llegada,
+        "bitacora.h_llegada": h_llegada,
+        "bitacora.clave_id": clave_id,
+        "bitacora.km_salida": km_salida,
+        "bitacora.km_llegada": km_llegada,
+        "bitacora.hmetro_salida": hmetro_salida,
+        "bitacora.hmetro_llegada": hmetro_llegada,
+        "bitacora.hbomba_salida": hbomba_salida,
+        "bitacora.hbomba_llegada": hbomba_llegada,
+        "bitacora.obs": obs,
         maquina_id,
-        ord_trabajo,
-        n_factura,
-        cost_ser,
         taller_id,
         estado_mantencion_id,
         tipo_mantencion_id,
+        ord_trabajo,
+        n_factura,
+        cost_ser,
         fec_inicio,
         fec_termino
     } = req.body;
-
-    // Extraer los datos de la bitácora
-    let {
-        compania_id,
-        personal_id,
-        direccion,
-        f_salida,
-        h_salida,
-        f_llegada,
-        h_llegada,
-        clave_id,
-        km_salida,
-        km_llegada,
-        hmetro_salida,
-        hmetro_llegada,
-        hbomba_salida,
-        hbomba_llegada,
-        obs
-    } = bitacora;
 
     const errors = []; // Arreglo para almacenar errores
 
@@ -410,60 +403,26 @@ export const createMantencionBitacora = async (req, res) => {
             }
         }
 
-        // validar numeros flotantes (bitácora)
-        if(km_salida !== undefined){
-            const error = validateFloat(km_salida);
-            if (error) {
-                errors.push(`km_salida: ${error}`);
-            }
-        } else {
-            errors.push("km_salida es obligatorio");
-        }
+        // Validación de km_salida, km_llegada, hmetro_salida, etc.
+        const validateFields = [
+            { field: km_salida, name: "km_salida" },
+            { field: km_llegada, name: "km_llegada" },
+            { field: hmetro_salida, name: "hmetro_salida" },
+            { field: hmetro_llegada, name: "hmetro_llegada" },
+            { field: hbomba_salida, name: "hbomba_salida" },
+            { field: hbomba_llegada, name: "hbomba_llegada" }
+        ];
 
-        if(km_llegada !== undefined){
-            const error = validateFloat(km_llegada);
-            if (error) {
-                errors.push(`km_llegada: ${error}`);
+        validateFields.forEach(({ field, name }) => {
+            if (field === undefined || field === null) {
+                errors.push(`${name} es obligatorio`);
+            } else {
+                const error = validateFloat(field);
+                if (error) {
+                    errors.push(`${name}: ${error}`);
+                }
             }
-        } else {
-            errors.push("km_llegada es obligatorio");
-        }
-
-        if(hmetro_salida !== undefined){
-            const error = validateFloat(hmetro_salida);
-            if (error) {
-                errors.push(`hmetro_salida: ${error}`);
-            }
-        } else {
-            errors.push("hmetro_salida es obligatorio");
-        }
-
-        if(hmetro_llegada !== undefined){
-            const error = validateFloat(hmetro_llegada);
-            if (error) {
-                errors.push(`hmetro_llegada: ${error}`);
-            }
-        } else {
-            errors.push("hmetro_llegada es obligatorio");
-        }
-
-        if(hbomba_salida !== undefined){
-            const error = validateFloat(hbomba_salida);
-            if (error) {
-                errors.push(`hbomba_salida: ${error}`);
-            }
-        } else {
-            errors.push("hbomba_salida es obligatorio");
-        }
-
-        if(hbomba_llegada !== undefined){
-            const error = validateFloat(hbomba_llegada);
-            if (error) {
-                errors.push(`hbomba_llegada: ${error}`);
-            }
-        } else {
-            errors.push("hbomba_llagada es obligatorio");
-        }
+        });
 
         // Validaciones para mantención
         const [tallerExists] = await pool.query("SELECT 1 FROM taller WHERE id = ? AND isDeleted = 0", [taller_id]);
@@ -511,7 +470,7 @@ export const createMantencionBitacora = async (req, res) => {
                 hmetro_salida, hmetro_llegada, hbomba_salida, hbomba_llegada, obs, isDeleted
             ) VALUES (
                 ?, ?, ?, ?, STR_TO_DATE(?, "%d-%m-%Y %H:%i"),
-                STR_TO_DATE(?, "%d-%m-%Y %H:%i"), ?, ?, ?, ?, ?, ?, ?, ?, 0
+                STR_TO_DATE(?, "%d-%m-%Y %H:%i"), ?, ?, ?, ?, ?, ?, ?, 0
             )`,
             [
                 companiaIdNumber, personalIdNumber, maquinaIdNumber, direccion,

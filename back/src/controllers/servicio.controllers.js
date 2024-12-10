@@ -94,10 +94,15 @@ export const getServicio = async (req, res) => {
 
 // Crear un nuevo servicio
 export const createServicio = async (req, res) => {
-    const { subdivision_id, descripcion } = req.body;
+    let { 
+        subdivision_id, 
+        descripcion 
+    } = req.body;
     let errors = [];
 
     try {
+        descripcion = descripcion.trim();
+
         // Validar existencia de la subdivision
         const [subdivisionExists] = await pool.query("SELECT 1 FROM subdivision WHERE id = ? AND isDeleted = 0", [subdivision_id]);
         if (subdivisionExists.length === 0) {
@@ -168,7 +173,11 @@ export const deleteServicio = async (req, res) => {
 // Actualizar un servicio
 export const updateServicio = async (req, res) => {
     const { id } = req.params;
-    const { subdivision_id, descripcion, isDeleted } = req.body;
+    let { 
+        subdivision_id, 
+        descripcion, 
+        isDeleted 
+    } = req.body;
     let errors = [];
 
     try {
@@ -182,15 +191,22 @@ export const updateServicio = async (req, res) => {
 
         // Validar y agregar subdivision_id
         if (subdivision_id !== undefined) {
+            // validar si no viene vacio
+            if (subdivision_id === "") {
+                errors.push("El campo 'subdivision_id' no puede estar vacío");
+            }
+
             const [subdivisionExists] = await pool.query("SELECT 1 FROM subdivision WHERE id = ? AND isDeleted = 0", [subdivision_id]);
             if (subdivisionExists.length === 0) {
                 errors.push("Subdivision no existe o está eliminada");
             }
+
             updates.subdivision_id = subdivision_id;
         }
 
         // Validar y agregar descripcion
         if (descripcion !== undefined) {
+            descripcion = descripcion.trim();
             if (typeof descripcion !== "string") {
                 errors.push("Tipo de datos inválido para 'descripcion'");
             }
