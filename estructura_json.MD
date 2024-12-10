@@ -164,39 +164,46 @@ Se debe enviar un archivo en `form-data` con la clave `file`.
     "obs": "Observaciones opcionales"
 }
 ```
-
-# 12. mantencion
-### "/api/mantencion"
+# 12. tipo_mantencion
+### "/api/tipo_mantencion"
 ```
 {
-  "bitacora.compania_id": 2,
-  "bitacora.personal_id": 1,
-  "bitacora.direccion": "Dirección de destino",
-  "bitacora.f_salida": "01-01-2024",
-  "bitacora.h_salida": "08:30",
-  "bitacora.f_llegada": "01-01-2024",
-  "bitacora.h_llegada": "12:45",
-  "bitacora.clave_id": 3,
-  "bitacora.km_salida": 1500,
-  "bitacora.km_llegada": 1600,
-  "bitacora.hmetro_salida": 120.5,
-  "bitacora.hmetro_llegada": 130.7,
-  "bitacora.hbomba_salida": 50,
-  "bitacora.hbomba_llegada": 55.8,
-  "bitacora.obs": "Observaciones adicionales si hay alguna",
-  "maquina_id": 1,
-  "taller_id": 1,
-  "estado_mantencion_id": 6,
-  "tipo_mantencion_id": 1,
-  "ord_trabajo": "OT12345",
-  "n_factura": 45678,
-  "cost_ser": 50000,
-  "fec_inicio": "01-01-2024",  // Esta fecha es opcional y debe ser en formato dd-mm-yyyy
-  "fec_termino": "02-01-2024"  // Esta fecha es opcional y debe ser en formato dd-mm-yyyy
+    "nombre": "tipo_mantencion 1"
 }
 ```
 
-# 12.1 mantencion (legacy) POST
+# 13. mantencion
+### "/api/mantencion"
+```
+{
+    "bitacora.compania_id": 2,
+    "bitacora.personal_id": 29,
+    "bitacora.direccion": "Dirección de destino",
+    "bitacora.f_salida": "01-01-2024",
+    "bitacora.h_salida": "08:30",
+    "bitacora.f_llegada": "01-01-2024",
+    "bitacora.h_llegada": "12:45",
+    "bitacora.clave_id": 3,
+    "bitacora.km_salida": 1500,
+    "bitacora.km_llegada": 1600,
+    "bitacora.hmetro_salida": 120.5,
+    "bitacora.hmetro_llegada": 130.7,
+    "bitacora.hbomba_salida": 50,
+    "bitacora.hbomba_llegada": 55.8,
+    "bitacora.obs": "Observaciones adicionales si hay alguna",
+    "maquina_id": 1,
+    "taller_id": 1,
+    "estado_mantencion_id": 6,
+    "tipo_mantencion_id": 1,
+    "ord_trabajo": "OT12345",
+    "n_factura": 45678,
+    "cost_ser": 50000,
+    "fec_inicio": "01-01-2024", // Esta fecha es opcional y debe ser en formato dd-mm-yyyy
+    "fec_termino": "02-01-2024" // Esta fecha es opcional y debe ser en formato dd-mm-yyyy
+}
+```
+
+# 13.1 mantencion (legacy) POST
 ### "/api/mantencion/old"
 ```
 {
@@ -212,13 +219,6 @@ Se debe enviar un archivo en `form-data` con la clave `file`.
 }
 ```
 
-# 13. tipo_mantencion
-### "/api/tipo_mantencion"
-```
-{
-    "nombre": "tipo_mantencion 1"
-}
-```
 
 # 14.1. register
 ### "/api/usuario/register"

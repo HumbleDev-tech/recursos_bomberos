@@ -4,16 +4,20 @@ import { checkRole } from "../controllers/authMiddleware.js";
 import {
     createPersonal,
     downPersonal,
-    // getPersonalWithDetails,
     getPersonalWithDetailsPage,
     getPersonalbyID,
-    updateImage,
     updatePersonal,
 } from "../controllers/personal.controllers.js";
 
 // Configuración de multer
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+
+// Configuración de multer para los campos o "key" de imagen
+const uploadFields = upload.fields([
+    { name: 'imagen' }, 
+    { name: 'imgLicencia' }
+]);
 
 // TODO: Resto de rutas: busqueda con LIKE (sql)
 
@@ -27,17 +31,8 @@ router.get(base_route, checkRole(['TELECOM']), getPersonalWithDetailsPage); // c
 // page:              1
 // pageSize:          10
 
-router.get(`${base_route}/:id`, checkRole(['TELECOM']), getPersonalbyID);
-
-router.post(base_route, checkRole(['TELECOM']), createPersonal);
-
-// Dar de baja (marcar como inactivo)
-router.delete(`${base_route}/:id`, checkRole(['TELECOM']), downPersonal);
-
-// Actualizar personal
-router.patch(`${base_route}/:id`, checkRole(['TELECOM']), updatePersonal);
-
-// Nueva ruta para actualizar la imagen
-router.patch(`${base_route}/:id/image`, checkRole(['TELECOM']), upload.single('file'), updateImage); // Ruta para actualizar la imagen
-
+router.get(`${base_route}/:id`, checkRole(['TELECOM']), getPersonalbyID); // Obtener un personal por ID
+router.post(base_route, checkRole(['TELECOM']), createPersonal); // Crear un nuevo personal
+router.delete(`${base_route}/:id`, checkRole(['TELECOM']), downPersonal); // dar de baja un personal
+router.patch(`${base_route}/:id`, checkRole(['TELECOM']), uploadFields, updatePersonal); // actualizar el personal
 export default router;

@@ -198,7 +198,6 @@ export const createPersonal = async (req, res) => {
         apellido,
         compania_id, // foranea
         fec_nac,
-        // img_url = '',
         obs = '',
         fec_ingreso,
         ven_licencia, // campo opcional
@@ -210,30 +209,38 @@ export const createPersonal = async (req, res) => {
 
     try {
         // Manejar la carga de archivos si existen
-        let imgUrl = null;
+        let img_url = null;
         let imgLicenciaUrl = null;
 
+        // Subir archivos a S3
         if (req.files) {
-            const { img, imgLicencia } = req.files;
-            // Manejar la carga de la imagen de perfil
-            if (img) {
+            const imagen = req.files.imagen ? req.files.imagen[0] : null;
+            const imgLicencia = req.files.imgLicencia ? req.files.imgLicencia[0] : null;
+
+        
+            if (imagen) {
                 try {
-                    const data = await uploadFileToS3(img, 'personal');
-                    imgUrl = data.Location;
-                    await saveImageUrlToDb(imgUrl, 'personal', 'img_url');
+                    const imgData = await uploadFileToS3(imagen, 'personal');
+                    if (imgData && imgData.Location) {
+                        updates.img_url = imgData.Location;
+                    } else {
+                        errors.push('No se pudo obtener la URL de la imagen de perfil');
+                    }
                 } catch (error) {
-                    errors.push('Error al subir la imagen de perfil');
+                    errors.push('Error al subir la imagen de perfil: ' + error.message);
                 }
             }
-
-            // Manejar la carga de la imagen de la licencia
+        
             if (imgLicencia) {
                 try {
-                    const data = await uploadFileToS3(imgLicencia, 'personal');
-                    imgLicenciaUrl = data.Location;
-                    await saveImageUrlToDb(imgLicenciaUrl, 'personal', 'imgLicencia');
+                    const licenciaData = await uploadFileToS3(imgLicencia, 'personal');
+                    if (licenciaData && licenciaData.Location) {
+                        updates.imgLicencia = licenciaData.Location;
+                    } else {
+                        errors.push('No se pudo obtener la URL de la imagen de la licencia');
+                    }
                 } catch (error) {
-                    errors.push('Error al subir la imagen de la licencia');
+                    errors.push('Error al subir la imagen de la licencia: ' + error.message);
                 }
             }
         }
@@ -256,7 +263,7 @@ export const createPersonal = async (req, res) => {
             }
 
             // Validar que ambos campos tengan el formato correcto
-            if (!validateDate(ultima_fec_servicio_f) || !validateDate(ultima_fec_servicio_h)) {
+            if (!validateDate(ultima_fec_servicio_fecha, ultima_fec_servicio_hora)) {
                 errors.push('El formato de la fecha y hora de "ultima_fec_servicio" es inválido (dd-MM-yyyy HH:mm)');
             }
 
@@ -331,12 +338,12 @@ export const createPersonal = async (req, res) => {
 
         // Si existen errores, devolverlos antes de continuar
         if (errors.length > 0) {
-            return res.status(400).json({ message: 'Errores de validación', errors });
+            return res.status(400).json({ errors });
         }
 
         // Inserción en la base de datos
         const [rows] = await pool.query(
-            'INSERT INTO personal (rol_personal_id, rut, nombre, apellido, compania_id, fec_nac, img_url, obs, fec_ingreso, isDeleted, ven_licencia, ultima_fec_servicio) VALUES (?, ?, ?, ?, ?, STR_TO_DATE(?, "%d-%m-%Y"), ?, ?, STR_TO_DATE(?, "%d-%m-%Y"), 0, STR_TO_DATE(?, "%d-%m-%Y"), STR_TO_DATE(?, "%d-%m-%Y %H:%i"))',
+            'INSERT INTO personal (rol_personal_id, rut, nombre, apellido, compania_id, fec_nac, img_url, obs, fec_ingreso, isDeleted, ven_licencia, imgLicencia, ultima_fec_servicio) VALUES (?, ?, ?, ?, ?, STR_TO_DATE(?, "%d-%m-%Y"), ?, ?, STR_TO_DATE(?, "%d-%m-%Y"), 0, STR_TO_DATE(?, "%d-%m-%Y"), ?, STR_TO_DATE(?, "%d-%m-%Y %H:%i"))',
             [
                 rolPersonalIdNumber,
                 rut,
@@ -344,10 +351,11 @@ export const createPersonal = async (req, res) => {
                 apellido,
                 companiaIdNumber,
                 fec_nac,
-                img_url,
+                img_url || null, // Inserta NULL si img_url no se especifica
                 obs,
                 fec_ingreso || null, // Inserta NULL si fec_ingreso no se especifica
                 ven_licencia || null, // Inserta NULL si ven_licencia no se especifica
+                imgLicenciaUrl || null, // Inserta NULL si imgLicenciaUrl no se especifica
                 ultima_fec_servicio
             ]
         );
@@ -364,6 +372,7 @@ export const createPersonal = async (req, res) => {
             obs,
             fec_ingreso,
             ven_licencia,
+            imgLicenciaUrl,
             ultima_fec_servicio
         });
     } catch (error) {
@@ -409,7 +418,6 @@ export const updatePersonal = async (req, res) => {
         apellido,
         compania_id, // foranea
         fec_nac,
-        img_url,
         obs,
         isDeleted,
         fec_ingreso,
@@ -528,12 +536,39 @@ export const updatePersonal = async (req, res) => {
             updates.ven_licencia = ven_licencia;
         }
 
-        if (img_url !== undefined) {
-            if (typeof img_url !== 'string') {
-                errors.push("Tipo de dato inválido para 'img_url'");
+        // manejar la carga de archivos si existen
+        if (req.files) {
+            const imagen = req.files.imagen ? req.files.imagen[0] : null;
+            const imgLicencia = req.files.imgLicencia ? req.files.imgLicencia[0] : null;
+
+        
+            if (imagen) {
+                try {
+                    const imgData = await uploadFileToS3(imagen, 'personal');
+                    if (imgData && imgData.Location) {
+                        updates.img_url = imgData.Location;
+                    } else {
+                        errors.push('No se pudo obtener la URL de la imagen de perfil');
+                    }
+                } catch (error) {
+                    errors.push('Error al subir la imagen de perfil: ' + error.message);
+                }
             }
-            updates.img_url = img_url;
+        
+            if (imgLicencia) {
+                try {
+                    const licenciaData = await uploadFileToS3(imgLicencia, 'personal');
+                    if (licenciaData && licenciaData.Location) {
+                        updates.imgLicencia = licenciaData.Location;
+                    } else {
+                        errors.push('No se pudo obtener la URL de la imagen de la licencia');
+                    }
+                } catch (error) {
+                    errors.push('Error al subir la imagen de la licencia: ' + error.message);
+                }
+            }
         }
+        
 
         if (obs !== undefined) {
             if (typeof obs !== 'string') {
@@ -563,6 +598,9 @@ export const updatePersonal = async (req, res) => {
             updates.ultima_fec_servicio = `${ultima_fec_servicio_fecha} ${ultima_fec_servicio_hora}`;
         }
 
+        console.log("Updates:", updates);
+        console.log("Files: ", req.files)
+
         if (errors.length > 0) {
             return res.status(400).json({ errors }); // Devuelve los errores
         }
@@ -582,6 +620,8 @@ export const updatePersonal = async (req, res) => {
             })
             .join(', ');
 
+
+
         const values = Object.values(updates).concat(idNumber);
         const [result] = await pool.query(`UPDATE personal SET ${setClause} WHERE id = ?`, values);
 
@@ -596,29 +636,6 @@ export const updatePersonal = async (req, res) => {
     } catch (error) {
         console.error('error: ', error);
         return res.status(500).json({ message: "Error interno del servidor", error: error.message });
-    }
-};
-
-const value = "personal";
-const folder=value;
-const tableName=value;
-const columnName = "img_url";
-
-export const updateImage = async (req, res) => {
-    const { id } = req.params;
-    const file = req.file;
-
-    if (!file) {
-        return res.status(400).json({ message: "Falta el archivo." });
-    }
-
-    try {
-        const data = await uploadFileToS3(file, folder);
-        const newUrl = data.Location;
-        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
-        res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
-    } catch (error) {
-        handleError(res, error, "Error al actualizar la imagen");
     }
 };
 
