@@ -32,7 +32,7 @@ router.get(base_route, checkRole(['TELECOM']), getPersonalWithDetailsPage); // c
 // pageSize:          10
 
 router.get(`${base_route}/:id`, checkRole(['TELECOM']), getPersonalbyID); // Obtener un personal por ID
-router.post(base_route, checkRole(['TELECOM']), createPersonal); // Crear un nuevo personal
+router.post(base_route, checkRole(['TELECOM']), uploadFields, createPersonal); // Crear un nuevo personal
 router.delete(`${base_route}/:id`, checkRole(['TELECOM']), downPersonal); // dar de baja un personal
 router.patch(`${base_route}/:id`, checkRole(['TELECOM']), uploadFields, updatePersonal); // actualizar el personal
 export default router;

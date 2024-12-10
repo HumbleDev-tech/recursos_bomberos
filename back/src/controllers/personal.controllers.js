@@ -33,6 +33,7 @@ export const getPersonalWithDetails = async (req, res) => {
                    p.img_url, 
                    p.obs, 
                    p.ven_licencia,
+                   p.imgLicencia,
                    p.isDeleted,
                    rp.nombre AS rol_personal, 
                    c.nombre AS compania
@@ -70,7 +71,7 @@ export const getPersonalWithDetailsPage = async (req, res) => {
                    p.img_url, p.obs, p.isDeleted,
                    rp.nombre AS rol_personal,
                    c.nombre AS compania,
-                   p.compania_id, p.rol_personal_id, p.ven_licencia, p.ultima_fec_servicio,
+                   p.compania_id, p.rol_personal_id, p.ven_licencia, p.imgLicencia, p.ultima_fec_servicio,
                    TIMESTAMPDIFF(MONTH, p.fec_ingreso, CURDATE()) AS antiguedad,
                    GROUP_CONCAT(DISTINCT m.id) AS maquinas_ids
             FROM personal p
@@ -154,7 +155,7 @@ export const getPersonalbyID = async (req, res) => {
                    p.isDeleted,
                    rp.nombre AS rol_personal, 
                    c.nombre AS compania,
-                   p.compania_id, p.rol_personal_id, p.ven_licencia, p.ultima_fec_servicio,
+                   p.compania_id, p.rol_personal_id, p.ven_licencia, p.imgLicencia, p.ultima_fec_servicio,
                    TIMESTAMPDIFF(MONTH, p.fec_ingreso, CURDATE()) AS antiguedad,
                    GROUP_CONCAT(DISTINCT m.id) AS maquinas_ids
             FROM personal p
@@ -217,12 +218,11 @@ export const createPersonal = async (req, res) => {
             const imagen = req.files.imagen ? req.files.imagen[0] : null;
             const imgLicencia = req.files.imgLicencia ? req.files.imgLicencia[0] : null;
 
-        
             if (imagen) {
                 try {
                     const imgData = await uploadFileToS3(imagen, 'personal');
                     if (imgData && imgData.Location) {
-                        updates.img_url = imgData.Location;
+                        img_url = imgData.Location;
                     } else {
                         errors.push('No se pudo obtener la URL de la imagen de perfil');
                     }
@@ -235,7 +235,7 @@ export const createPersonal = async (req, res) => {
                 try {
                     const licenciaData = await uploadFileToS3(imgLicencia, 'personal');
                     if (licenciaData && licenciaData.Location) {
-                        updates.imgLicencia = licenciaData.Location;
+                        imgLicencia = licenciaData.Location;
                     } else {
                         errors.push('No se pudo obtener la URL de la imagen de la licencia');
                     }

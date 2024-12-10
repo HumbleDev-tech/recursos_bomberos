@@ -81,13 +81,34 @@ export const createCompania = async (req, res) => {
     let { 
         nombre, 
         direccion, 
-        img_url 
+        // img_url 
     } = req.body;
     const errors = []; // Arreglo para capturar errores
 
     try {
         nombre = String(nombre).trim();
         direccion = String(direccion).trim();
+
+        // Manejar la carga de archivos si existen
+        let img_url = null;
+
+        // manejo de subida de imagen S3
+        if (req.files){
+            const imagen = req.files.imagen ? req.files.imagen[0] : null;
+
+            if (imagen) {
+                try {
+                    const imgData = await uploadFileToS3(imagen, "compania");
+                    if (imgData && imgData.Location) {
+                        img_url = imgData.Location;
+                    } else{
+                        errors.push("No se pudo obtener la URL de la imagen");
+                    }
+                } catch (error) {
+                    errors.push("Error al subir la imagen", error.message);
+                }
+            }
+        }
 
         // Validación de datos
         if (typeof nombre !== "string") {
@@ -120,12 +141,13 @@ export const createCompania = async (req, res) => {
         }
 
         // Insertar la compañía (activo por defecto)
-        const [rows] = await pool.query('INSERT INTO compania (nombre, direccion, img_url, isDeleted) VALUES (?, ?, NULL, 0)', [nombre, direccion]);
+        const [rows] = await pool.query('INSERT INTO compania (nombre, direccion, img_url, isDeleted) VALUES (?, ?, ?, 0)', [nombre, direccion, img_url]);
 
         res.status(201).json({
             id: rows.insertId,
             nombre,
             direccion,
+            img_url,
             isDeleted: 0
         });
     } catch (error) {
@@ -165,7 +187,7 @@ export const updateCompania = async (req, res) => {
     let { 
         nombre,
         direccion,
-        img_url, 
+        // img_url, 
         isDeleted } = req.body;
     const errors = []; // Arreglo para capturar errores
 
@@ -177,6 +199,25 @@ export const updateCompania = async (req, res) => {
 
         // Validaciones
         const updates = {};
+        
+        // manejo de subida de imagen S3
+        if (req.files) {
+            const imagen = req.files.imagen ? req.files.imagen[0] : null;
+
+            if (imagen) {
+                try {
+                    const imgData = await uploadFileToS3(imagen, "compania");
+                    if (imgData && imgData.Location) {
+                        updates.img_url = imgData.Location;
+                    } else {
+                        errors.push("No se pudo obtener la URL de la imagen");
+                    }
+                } catch (error) {
+                    errors.push("Error al subir la imagen", error.message);
+                }
+            }
+        }
+
         if (nombre !== undefined) {
             nombre = String(nombre).trim();
 
@@ -253,28 +294,5 @@ export const updateCompania = async (req, res) => {
             message: "Error interno del servidor",
             errors
         });
-    }
-};
-
-const value = "compania";
-const folder = value;
-const tableName = value;
-const columnName = "img_url";
-
-export const updateImage = async (req, res) => {
-    const { id } = req.params;
-    const file = req.file;
-
-    if (!file) {
-        return res.status(400).json({ message: "Falta el archivo." });
-    }
-
-    try {
-        const data = await uploadFileToS3(file, folder);
-        const newUrl = data.Location;
-        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
-        res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
-    } catch (error) {
-        handleError(res, error, "Error al actualizar la imagen");
     }
 };
