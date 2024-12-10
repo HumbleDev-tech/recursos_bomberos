@@ -198,7 +198,7 @@ export const createPersonal = async (req, res) => {
         apellido,
         compania_id, // foranea
         fec_nac,
-        img_url = '',
+        // img_url = '',
         obs = '',
         fec_ingreso,
         ven_licencia, // campo opcional
@@ -209,6 +209,35 @@ export const createPersonal = async (req, res) => {
     const errors = []; // Array para almacenar los errores
 
     try {
+        // Manejar la carga de archivos si existen
+        let imgUrl = null;
+        let imgLicenciaUrl = null;
+
+        if (req.files) {
+            const { img, imgLicencia } = req.files;
+            // Manejar la carga de la imagen de perfil
+            if (img) {
+                try {
+                    const data = await uploadFileToS3(img, 'personal');
+                    imgUrl = data.Location;
+                    await saveImageUrlToDb(imgUrl, 'personal', 'img_url');
+                } catch (error) {
+                    errors.push('Error al subir la imagen de perfil');
+                }
+            }
+
+            // Manejar la carga de la imagen de la licencia
+            if (imgLicencia) {
+                try {
+                    const data = await uploadFileToS3(imgLicencia, 'personal');
+                    imgLicenciaUrl = data.Location;
+                    await saveImageUrlToDb(imgLicenciaUrl, 'personal', 'imgLicencia');
+                } catch (error) {
+                    errors.push('Error al subir la imagen de la licencia');
+                }
+            }
+        }
+
         // Validación de datos
         const rolPersonalIdNumber = parseInt(rol_personal_id);
         const companiaIdNumber = parseInt(compania_id);
