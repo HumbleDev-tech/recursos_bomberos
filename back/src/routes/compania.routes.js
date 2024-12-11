@@ -5,7 +5,6 @@ import {
     createCompania,
     deleteCompania,
     getCompania,
-    // getCompanias,
     getCompaniasPage,
     updateCompania,
 } from "../controllers/compania.controllers.js";

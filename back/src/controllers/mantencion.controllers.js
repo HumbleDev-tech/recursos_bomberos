@@ -270,6 +270,27 @@ export const createMantencionBitacora = async (req, res) => {
             errors.push("Tipo de datos inválido en la bitácora");
         }
 
+        // manejar la carga de archivos si existen
+        let img_url = null;
+
+        // manejo de subida de imagen S3
+        if (req.files) {
+            const imagen = req.files.imagen ? req.files.imagen[0] : null;
+
+            if (imagen) {
+                try {
+                    const imgData = await uploadFileToS3(imagen, "mantencion");
+                    if (imgData && imgData.Location) {
+                        img_url = imgData.Location;
+                    } else {
+                        errors.push("No se pudo obtener la URL de la imagen");
+                    }
+                } catch (error) {
+                    errors.push("Error al subir la imagen", error.message);
+                }
+            }
+        }
+
         // Validación de existencia de llaves foráneas para la bitácora
         const [companiaExists] = await pool.query("SELECT 1 FROM compania WHERE id = ? AND isDeleted = 0", [companiaIdNumber]);
         if (companiaExists.length === 0) {
@@ -385,7 +406,6 @@ export const createMantencionBitacora = async (req, res) => {
             return res.status(400).json({ errors });
         }
 
-        // TODO: CORREGIR
         // Inserción de la bitácora en la base de datos
         const [bitacoraResult] = await pool.query(
             `INSERT INTO bitacora (
@@ -408,11 +428,11 @@ export const createMantencionBitacora = async (req, res) => {
         // Inserción en la tabla mantención
         const [mantencionResult] = await pool.query(
             `INSERT INTO mantencion (
-                bitacora_id, maquina_id, ord_trabajo, n_factura,
+                bitacora_id, maquina_id, ord_trabajo, n_factura, img_url,
                 cost_ser, taller_id, estado_mantencion_id, tipo_mantencion_id, fec_inicio, fec_termino, isDeleted
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
             [
-                bitacora_id, maquina_id, ord_trabajo, n_factura || null,
+                bitacora_id, maquina_id, ord_trabajo, n_factura || null, img_url,
                 cost_ser || null, taller_id, estado_mantencion_id, tipo_mantencion_id,
                 formattedFecInicio, formattedFecTermino
             ]
@@ -621,6 +641,28 @@ export const updateMantencion = async (req, res) => {
             errors.push("Mantención no encontrada");
         }
 
+        // manejar la carga de archivos si existen
+        let img_url = null;
+
+        // manejo de subida de imagen S3
+        if (req.files) {
+            const imagen = req.files.imagen ? req.files.imagen[0] : null;
+
+            if (imagen) {
+                try {
+                    const imgData = await uploadFileToS3(imagen, "mantencion");
+                    if (imgData && imgData.Location) {
+                        img_url = imgData.Location;
+                        updates.img_url = img_url;
+                    } else {
+                        errors.push("No se pudo obtener la URL de la imagen");
+                    }
+                } catch (error) {
+                    errors.push("Error al subir la imagen", error.message);
+                }
+            }
+        }
+
         if (errors.length > 0) {
             return res.status(400).json({ errors });
         }
@@ -662,28 +704,5 @@ export const updateMantencion = async (req, res) => {
     } catch (error) {
         console.error("Error al actualizar mantención: ", error);
         return res.status(500).json({ message: "Error interno del servidor", error: error.message });
-    }
-};
-
-const value = "mantencion";
-const folder=value;
-const tableName=value;
-const columnName = "img_url";
-
-export const updateImage = async (req, res) => {
-    const { id } = req.params;
-    const file = req.file;
-
-    if (!file) {
-        return res.status(400).json({ message: "Falta el archivo." });
-    }
-
-    try {
-        const data = await uploadFileToS3(file, folder);
-        const newUrl = data.Location;
-        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
-        res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
-    } catch (error) {
-        handleError(res, error, "Error al actualizar la imagen");
     }
 };

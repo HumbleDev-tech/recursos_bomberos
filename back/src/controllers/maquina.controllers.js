@@ -251,6 +251,26 @@ export const createMaquina = async (req, res) => {
       errors.push({ field: 'peso_kg', message: 'El campo "peso_kg" debe ser un número entero.' });
     }
 
+    // manejar la carga de archivos si existen
+    let img_url = null;
+
+    // manejo de subida de imagen S3
+    if (req.files) {
+      const imagen = req.files.imagen ? req.files.imagen[0] : null;
+
+      if (imagen) {
+        try {
+          const imgData = await uploadFileToS3(imagen, "maquina");
+          if (imgData && imgData.Location) {
+            img_url = imgData.Location;
+          } else {
+            errors.push('No se pudo obtener la URL de la imagen');
+          }
+        } catch (error) {
+          errors.push('Error al subir la imagen', error.message);
+        }
+      }
+    }
     
     // Validación de llaves foráneas
     const [tipoMaquina] = await pool.query("SELECT * FROM tipo_maquina WHERE id = ? AND isDeleted = 0", [tipo_maquina_id]);
@@ -294,7 +314,7 @@ export const createMaquina = async (req, res) => {
 
     // Inserción en la base de datos
     const [rows] = await pool.query(
-      "INSERT INTO maquina (tipo_maquina_id, compania_id, codigo, patente, num_chasis, vin, bomba, hmetro_bomba, hmetro_motor, kmetraje, num_motor, ven_patente, procedencia_id, cost_rev_tec, ven_rev_tec, cost_seg_auto, ven_seg_auto, isDeleted, peso_kg, img_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, STR_TO_DATE(?, '%d-%m-%Y'), ?, ?, STR_TO_DATE(?, '%d-%m-%Y'), ?, STR_TO_DATE(?, '%d-%m-%Y'), 0, ?, NULL)",
+      "INSERT INTO maquina (tipo_maquina_id, compania_id, codigo, patente, num_chasis, vin, bomba, hmetro_bomba, hmetro_motor, kmetraje, num_motor, ven_patente, procedencia_id, cost_rev_tec, ven_rev_tec, cost_seg_auto, ven_seg_auto, isDeleted, peso_kg, img_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, STR_TO_DATE(?, '%d-%m-%Y'), ?, ?, STR_TO_DATE(?, '%d-%m-%Y'), ?, STR_TO_DATE(?, '%d-%m-%Y'), 0, ?, ?)",
       [
         tipo_maquina_id,
         compania_id,
@@ -313,7 +333,8 @@ export const createMaquina = async (req, res) => {
         ven_rev_tec,
         cost_seg_auto,
         ven_seg_auto,
-        peso_kg
+        peso_kg,
+        img_url
       ]
     );
 
@@ -373,6 +394,28 @@ export const updateMaquina = async (req, res) => {
 
     // Validaciones
     const updates = {};
+
+    // manejar la carga de archivos si existen
+    let img_url = null;
+
+    // manejo de subida de imagen S3
+    if (req.files) {
+      const imagen = req.files.imagen ? req.files.imagen[0] : null;
+      
+      if (imagen) {
+        try {
+          const imgData = await uploadFileToS3(imagen, "maquina");
+          if (imgData && imgData.Location) {
+            img_url = imgData.Location;
+            updates.img_url = img_url;
+          } else {
+            errors.push("No se pudo obtener la URL de la imagen");
+          }
+        } catch (error) {
+          errors.push("Error al subir la imagen", error.message);
+        }
+      }
+    }
 
     if (tipo_maquina_id !== undefined) {
       if (isNaN(parseInt(tipo_maquina_id))) {
@@ -581,27 +624,4 @@ export const updateMaquina = async (req, res) => {
     errors.push(error.message);
     return res.status(500).json({ message: "Error interno del servidor", errors });
   }
-};
-
-const value = "maquina";
-const folder=value;
-const tableName=value;
-const columnName = "img_url";
-
-export const updateImage = async (req, res) => {
-    const { id } = req.params;
-    const file = req.file;
-
-    if (!file) {
-        return res.status(400).json({ message: "Falta el archivo." });
-    }
-
-    try {
-        const data = await uploadFileToS3(file, folder);
-        const newUrl = data.Location;
-        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
-        res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
-    } catch (error) {
-        handleError(res, error, "Error al actualizar la imagen");
-    }
 };

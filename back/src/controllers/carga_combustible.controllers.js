@@ -50,7 +50,6 @@ export const getCargasCombustible = async (req, res) => {
     }
 };
 
-// TODO: des-anidar la consulta para obtener los datos de la bitácora. formato: "bitacora.<campo>"
 // con parámetros de búsqueda 
 // Paginacion
 export const getCargaCombustibleDetailsSearch = async (req, res) => {
@@ -128,7 +127,6 @@ export const getCargaCombustibleDetailsSearch = async (req, res) => {
     }
 };
 
-// TODO: des-anidar la consulta para obtener los datos de la bitácora. formato: "bitacora.<campo>"
 // Obtener carga de combustible por ID
 export const getCargaCombustibleByID = async (req, res) => {
     const { id } = req.params;
@@ -236,7 +234,7 @@ export const createCargaCombustibleBitacora = async (req, res) => {
     // Extraer y validar los datos de la bitácora
     const {
         compania_id,
-        conductor_id,
+        personal_id,
         maquina_id,
         direccion,
         f_salida,
@@ -267,13 +265,13 @@ export const createCargaCombustibleBitacora = async (req, res) => {
 
         // Convertir los IDs a números y validar
         const companiaIdNumber = parseInt(compania_id);
-        const conductorIdNumber = parseInt(conductor_id);
+        const personalIdNumber = parseInt(personal_id);
         const maquinaIdNumber = parseInt(maquina_id);
         const claveIdNumber = parseInt(clave_id);
 
         if (
             isNaN(companiaIdNumber) ||
-            isNaN(conductorIdNumber) ||
+            isNaN(personalIdNumber) ||
             isNaN(maquinaIdNumber) ||
             isNaN(claveIdNumber) ||
             typeof direccion !== 'string'
@@ -281,6 +279,26 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             errors.push('Tipo de datos inválido en bitácora');
         }
 
+        // manejar la carga de archivos si existen
+        let img_url = null;
+
+        // manejo de subida de imagen S3
+        if (req.files) {
+            const imagen = req.files.imagen ? req.files.imagen[0] : null;
+
+            if (imagen) {
+                try {
+                    const imgData = await uploadFileToS3(imagen, "carga_combustible");
+                    if (imgData && imgData.Location) {
+                        img_url = imgData.Location;
+                    }
+                } catch (error) {
+                    errors.push("Error al subir la imagen", error.message);
+                }
+            }
+        }
+
+        // TODO: usar "validateDate" para validar las fechas
         // Validación de fecha y hora si están presentes
         const fechaRegex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$/;
         const horaRegex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
@@ -302,12 +320,10 @@ export const createCargaCombustibleBitacora = async (req, res) => {
             errors.push("Compañía no existe o está eliminada");
         }
 
-        const [conductorExists] = await pool.query(
-            "SELECT 1 FROM conductor_maquina WHERE id = ? AND isDeleted = 0",
-            [conductorIdNumber]
+        const [personalExists] = await pool.query("SELECT 1 FROM personal WHERE id = ? AND isDeleted = 0", [personalIdNumber]
         );
-        if (conductorExists.length === 0) {
-            errors.push("Conductor no existe o está eliminado");
+        if (personalExists.length === 0) {
+            errors.push("Personal no existe o está eliminado");
         }
 
         const [maquinaExists] = await pool.query(
@@ -398,15 +414,15 @@ export const createCargaCombustibleBitacora = async (req, res) => {
         // Crear una nueva bitácora
         const [bitacoraResult] = await pool.query(
             `INSERT INTO bitacora (
-                compania_id, conductor_id, maquina_id, direccion,
+                compania_id, personal_id, maquina_id, direccion,
                 fh_salida, fh_llegada, clave_id, km_salida, km_llegada,
                 hmetro_salida, hmetro_llegada, hbomba_salida, hbomba_llegada, obs, isDeleted
             ) VALUES (?, ?, ?, ?, STR_TO_DATE(?, "%d-%m-%Y %H:%i"), STR_TO_DATE(?, "%d-%m-%Y %H:%i"), ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
             [
-                companiaIdNumber, conductorIdNumber, maquinaIdNumber, direccion,
+                companiaIdNumber, personalIdNumber, maquinaIdNumber, direccion,
                 fh_salida, fh_llegada, claveIdNumber,
-                kmSalida, kmLlegada, hmetroSalida, hmetroLlegada,
-                hbombaSalida, hbombaLlegada, obs || null
+                km_salida, km_llegada, hmetro_salida, hmetro_llegada,
+                hbomba_salida, hbomba_llegada, obs || null
             ]
         );
 
@@ -414,15 +430,16 @@ export const createCargaCombustibleBitacora = async (req, res) => {
 
         // Crear la carga de combustible
         const [cargaResult] = await pool.query(
-            'INSERT INTO carga_combustible (bitacora_id, litros, valor_mon, isDeleted) VALUES (?, ?, ?, 0)',
-            [bitacoraId, litros, valor_mon]
+            'INSERT INTO carga_combustible (bitacora_id, litros, valor_mon, img_url, isDeleted) VALUES (?, ?, ?, ?, 0)',
+            [bitacoraId, litros, valor_mon, img_url]
         );
 
         return res.status(201).json({
             id: cargaResult.insertId,
             bitacora_id: bitacoraId,
             litros,
-            valor_mon
+            valor_mon,
+            img_url
         });
     } catch (error) {
         errors.push(error.message);
@@ -455,9 +472,14 @@ export const downCargaCombustible = async (req, res) => {
 // Actualizar una carga de combustible
 export const updateCargaCombustible = async (req, res) => {
     const { id } = req.params;
-    const { bitacora_id, litros, valor_mon } = req.body;
+    let { 
+        bitacora_id, 
+        litros, 
+        valor_mon 
+    } = req.body;
 
     const errors = []; // Arreglo para capturar errores
+    const updates = {}; // Objeto para almacenar los campos a actualizar
 
     try {
         const idNumber = parseInt(id);
@@ -475,51 +497,83 @@ export const updateCargaCombustible = async (req, res) => {
             errors.push('Tipo de datos inválido para bitácora');
         }
 
-        // Validar litros y valor_mon
-        // litros (float)
-        if (litros !== undefined ) {
+        // Validar litros (float)
+        if (litros !== undefined) {
             const error = validateFloat(litros);
             if (error) {
                 errors.push(`litros: ${error}`);
+            } else {
+                updates.litros = litros; // Solo agregar si es válido
             }
         }
 
-        // valor_mon (int)
+        // Validar valor_mon (int)
         if (valor_mon !== undefined && typeof valor_mon !== 'number') {
             errors.push('Tipo de datos inválido para valor_mon');
+        } else if (valor_mon !== undefined) {
+            updates.valor_mon = valor_mon; // Solo agregar si es válido
         }
 
+        // Manejo de carga de archivos si existen
+        let img_url = null;
+
+        // Manejo de subida de imagen S3
+        if (req.files) {
+            const imagen = req.files.imagen ? req.files.imagen[0] : null;
+
+            if (imagen) {
+                try {
+                    const imgData = await uploadFileToS3(imagen, "carga_combustible");
+                    if (imgData && imgData.Location) {
+                        img_url = imgData.Location;
+                        updates.img_url = img_url;
+                    }
+                } catch (error) {
+                    errors.push("Error al subir la imagen", error.message);
+                }
+            }
+        }
+
+        // Si hay errores, devolverlos
         if (errors.length > 0) {
             return res.status(400).json({ errors });
         }
 
-        const [result] = await pool.query(
-            `UPDATE carga_combustible SET 
-                bitacora_id = IFNULL(?, bitacora_id), 
-                litros = IFNULL(?, litros), 
-                valor_mon = IFNULL(?, valor_mon) 
-            WHERE id = ?`,
-            [bitacoraIdNumber, litros, valor_mon, idNumber]
-        );
-
-        if (result.affectedRows === 0) {
-            errors.push('Carga de combustible no encontrada');
-            return res.status(404).json({ message: 'Errores de validación', errors });
+        // Si bitacora_id se proporciona, agregarla al objeto de actualizaciones
+        if (bitacora_id !== undefined) {
+            updates.bitacora_id = bitacoraIdNumber;
         }
 
+        // Construir la consulta de actualización
+        const setClause = Object.keys(updates)
+            .map((key) => `${key} = ?`)
+            .join(", ");
+
+        if (!setClause) {
+            return res.status(400).json({
+                message: "No se proporcionaron campos para actualizar"
+            });
+        }
+
+        const values = Object.values(updates).concat(idNumber);
+
+        // Ejecutar la consulta
+        const [result] = await pool.query(`UPDATE carga_combustible SET ${setClause} WHERE id = ?`, values);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                message: 'Compañía no encontrada'
+            });
+        }
+
+        // Recuperar los datos actualizados
         const [rows] = await pool.query('SELECT * FROM carga_combustible WHERE id = ?', [idNumber]);
         const row = rows[0];
 
-        const bitacoraQuery = `
-            SELECT id, compania_id, conductor_id, direccion, 
-                   DATE_FORMAT(fh_salida, '%d-%m-%Y %H:%i') as h_salida,
-                   DATE_FORMAT(fh_llegada, '%d-%m-%Y %H:%i') as h_llegada
-            FROM bitacora WHERE id = ?`;
-        const [bitacora] = await pool.query(bitacoraQuery, [row.bitacora_id]);
-
+        // Responder con los datos actualizados
         res.json({
             id: row.id,
-            bitacora: bitacora[0],
+            bitacora_id: row.bitacora_id,
             litros: row.litros,
             valor_mon: row.valor_mon,
             img_url: row.img_url,
@@ -527,28 +581,5 @@ export const updateCargaCombustible = async (req, res) => {
     } catch (error) {
         errors.push(error.message);
         return res.status(500).json({ message: 'Error interno del servidor', errors });
-    }
-};
-
-const value = "carga_combustible";
-const folder = value;
-const tableName = value;
-const columnName = "img_url";
-
-export const updateImage = async (req, res) => {
-    const { id } = req.params;
-    const file = req.file;
-
-    if (!file) {
-        return res.status(400).json({ message: "Falta el archivo." });
-    }
-
-    try {
-        const data = await uploadFileToS3(file, folder);
-        const newUrl = data.Location;
-        await updateImageUrlInDb(id, newUrl, tableName, columnName); // Pasa el nombre de la tabla
-        res.status(200).json({ message: "Imagen actualizada con éxito", url: newUrl });
-    } catch (error) {
-        handleError(res, error, "Error al actualizar la imagen");
     }
 };
