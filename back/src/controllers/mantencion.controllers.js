@@ -1,10 +1,8 @@
 import { pool } from "../db.js";
 import {
-    uploadFileToS3,
-    updateImageUrlInDb,
-    handleError
+    uploadFileToS3
   } from '../utils/fileUpload.js';
-import { validateDate, validateFloat } from "../utils/validations.js";
+import { validateDate, validateFloat, validateStartEndDate } from "../utils/validations.js";
 
 // con parámetros de búsqueda 
 // Paginacion
@@ -247,11 +245,32 @@ export const createMantencionBitacora = async (req, res) => {
         let fh_salida = null;
         let fh_llegada = null;
 
+        // Validar fechas y horas de salida y llegada
         if (f_salida && h_salida) {
+            const error = validateDate(f_salida, h_salida);
+            // console.log(`Validando fh_salida: ${error}`);
+            if (!error) {
+                console.log(`${f_salida} ${h_salida}`);
+                errors.push(`Fecha y hora de salida inválida: ${error}`);
+            }
             fh_salida = `${f_salida} ${h_salida}`;
         }
+
         if (f_llegada && h_llegada) {
+            const error = validateDate(f_llegada, h_llegada);
+            // console.log(`Validando fh_llegada: ${error}`);
+            if (!error) {
+                errors.push(`Fecha y hora de llegada inválida: ${error}`);
+            }
             fh_llegada = `${f_llegada} ${h_llegada}`;
+        }
+
+        // Validar que la fecha y hora de salida no sea posterior a la de llegada
+        if (fh_salida && fh_llegada) {
+            const error = validateStartEndDate(fh_salida, fh_llegada);
+            if (!error) {
+                errors.push(`Fecha y hora de salida no pueden ser posteriores a la fecha y hora de llegada`);
+            }
         }
 
         // Validación de datos de la bitácora
@@ -399,6 +418,18 @@ export const createMantencionBitacora = async (req, res) => {
             }
         } else if (cost_ser) {
             errors.push("Debe ingresar el número de factura primero");
+        }
+
+        // validar si personal_id es conductor (existe valor en 'ven_licencia')
+        const [isConductor] = await pool.query("SELECT 1 FROM personal WHERE id = ? AND ven_licencia IS NOT NULL", [personalIdNumber]);
+        if (isConductor.length === 0) {
+            errors.push("El personal seleccionado no es un conductor");
+        }
+
+        // validar si personal_id es conductor de la máquina 
+        const [isConductorMaquina] = await pool.query("SELECT 1 FROM conductor_maquina WHERE personal_id = ? AND maquina_id = ?;", [personalIdNumber, maquinaIdNumber]);
+        if (isConductorMaquina.length === 0) {
+            errors.push("El personal seleccionado no es conductor de la máquina");
         }
 
         // Si hay errores, devolverlos

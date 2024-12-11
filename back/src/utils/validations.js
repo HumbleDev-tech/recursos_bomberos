@@ -1,3 +1,5 @@
+import { parse, isValid, isBefore } from 'date-fns';
+
 /**
  * Validates a Chilean RUT (Rol Único Tributario).
  *
@@ -119,4 +121,56 @@ export function validateType(value, type) {
   }
 
   return typeof value === type;
+}
+
+/**
+ * Validates that the start date is before the end date.
+ * The dates can be provided as strings in the formats 'dd-MM-yyyy' or 'dd-MM-yyyy HH:mm'.
+ *
+ * @param {string|Date} startDate - The start date to validate.
+ * @param {string|Date} endDate - The end date to validate.
+ * @returns {boolean} - Returns true if the end date is not before the start date, otherwise false.
+ * @throws {Error} - Throws an error if the provided dates are not valid.
+ */
+export function validateStartEndDate(startDate, endDate) {
+  // Definir los formatos esperados
+  const dateFormat = 'dd-MM-yyyy';          // Formato sin hora
+  const dateTimeFormat = 'dd-MM-yyyy HH:mm'; // Formato con hora
+
+  // Función para parsear las fechas, manejando ambos formatos
+  const parseDate = (dateString) => {
+    // Primero intentamos con el formato completo con hora
+    let parsedDate = parse(dateString, dateTimeFormat, new Date());
+    
+    // Si no es válido, intentamos con solo la fecha (sin hora)
+    if (!isValid(parsedDate)) {
+      parsedDate = parse(dateString, dateFormat, new Date());
+    }
+
+    return parsedDate;
+  };
+
+  // Parsear las fechas si son cadenas
+  if (typeof startDate === 'string') {
+    startDate = parseDate(startDate);
+  }
+  if (typeof endDate === 'string') {
+    endDate = parseDate(endDate);
+  }
+
+  // Validar que las fechas sean correctas
+  if (!(startDate instanceof Date) || !(endDate instanceof Date)) {
+    throw new Error("Las fechas proporcionadas no son válidas.");
+  }
+
+  // Validar si las fechas son válidas
+  if (!isValid(startDate)) {
+    throw new Error("La fecha de inicio proporcionada no es válida.");
+  }
+  if (!isValid(endDate)) {
+    throw new Error("La fecha de fin proporcionada no es válida.");
+  }
+
+  // Comprobar si endDate es anterior a startDate
+  return !isBefore(endDate, startDate);
 }
