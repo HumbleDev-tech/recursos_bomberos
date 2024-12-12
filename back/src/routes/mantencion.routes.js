@@ -11,7 +11,7 @@ import {
   getMantencionCostosByAnio,
   getReporteGeneral, 
   getReporteMantencionesEstadoCosto
-} from "../controllers/stats_mantencion.controllers.js";
+} from "../controllers/stats_mantencion.js";
 import multer from 'multer';
 import { checkRole } from "../controllers/authMiddleware.js";
 
